@@ -1,0 +1,64 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hooks:
+    name: appwrite-hooks unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run hook test suite
+        env:
+          APPWRITE_HOOKS_NO_METRICS: '1'
+        run: python3 plugins/appwrite-hooks/hooks/test_hooks.py
+
+  validate:
+    name: skill + command + manifest validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate frontmatter + JSON manifests
+        run: python3 scripts/validate_skills.py
+
+  index:
+    name: utopia-experts index is up to date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Regenerate index and diff
+        run: |
+          python3 plugins/utopia-experts/scripts/generate_index.py
+          if ! git diff --exit-code plugins/utopia-experts/skills/INDEX.md; then
+            echo ""
+            echo "INDEX.md is out of date. Run:"
+            echo "  python3 plugins/utopia-experts/scripts/generate_index.py"
+            echo "and commit the result."
+            exit 1
+          fi
