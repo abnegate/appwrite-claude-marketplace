@@ -1,0 +1,18 @@
+[
+  {"query": "whats the right way to use the pool library thing in appwrite — we keep getting connection timeout errors under load and I think the size config is wrong", "should_trigger": true},
+  {"query": "i need to figure out how the Query::equal method handles arrays, feels off — we're passing a single string but it keeps wrapping in IN()", "should_trigger": true},
+  {"query": "our messaging worker is crashing with Retryable not found when the Sendgrid call fails — can you check the queue library for how retries work", "should_trigger": true},
+  {"query": "can you explain how document permissions work — I'm trying to understand when Permission::read(Role::any()) gets checked vs collection-level security", "should_trigger": true},
+  {"query": "thinking about moving audit storage from MariaDB to ClickHouse since we're at 100M rows. what does the utopia audit adapter support?", "should_trigger": true},
+  {"query": "we have a backend validator rejecting our 200-char project slug — it's using Text(36) but I thought the first arg was max length. is that right?", "should_trigger": true},
+  {"query": "hi i have a weird bug — the database adapter is returning empty results but I know the data is there and we checked permissions. could be an auth or cache issue", "should_trigger": true},
+  {"query": "i want to build a custom DNS resolver that serves ACME challenge TXT records from Redis — is there a utopia library for that or do I need raw sockets?", "should_trigger": true},
+  {"query": "how do I add a new Svelte 5 runes component to the Console sidebar — it needs to integrate with the wizard store", "should_trigger": false},
+  {"query": "add a new DigitalOcean droplet resource to the staging Terraform module with 4GB RAM", "should_trigger": false},
+  {"query": "fix the typo in README.md line 42 — 'teh' should be 'the'", "should_trigger": false},
+  {"query": "write a PR description for the changes I just committed to the feat-dedicated-db branch", "should_trigger": false},
+  {"query": "i need to configure docker compose to mount the local appwrite repo into the container for development", "should_trigger": false},
+  {"query": "schedule a cron job in the open-runtimes Node.js runtime that runs every 5 minutes", "should_trigger": false},
+  {"query": "run bun run tests in the console repo and tell me which e2e tests are failing", "should_trigger": false},
+  {"query": "what's the best way to set up my .env.example file for a new Appwrite self-hosted instance?", "should_trigger": false}
+]

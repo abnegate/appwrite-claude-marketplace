@@ -1,0 +1,104 @@
+{
+  "skill_name": "utopia-router",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "How do I page query results with a stable cursor?",
+      "expected_output": "The router picks utopia-query-expert (single skill) and returns a 200-400 word answer covering Query::cursorAfter, immutability, and the cursorAfter/cursorBefore exclusivity gotcha.",
+      "files": [],
+      "expectations": [
+        "Picks exactly 1 skill: utopia-query-expert",
+        "Answer mentions Query::cursorAfter as the primary mechanism",
+        "Answer warns that cursorAfter and cursorBefore are mutually exclusive",
+        "Answer is 200-400 words",
+        "Does not load utopia-database-expert unless the user's question specifically involves adapter-level concerns"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I'm seeing pool exhaustion on our database adapter under load — is the pool sized wrong or is there a leak?",
+      "expected_output": "The router picks utopia-pools-expert (primary) and utopia-database-expert (secondary). Answer covers put-back-or-leak, Group::use pattern, sizing heuristics, and database adapter pool wiring.",
+      "files": [],
+      "expectations": [
+        "Picks exactly 2 skills: utopia-pools-expert and utopia-database-expert",
+        "Answer mentions Group::use as the idiomatic entry point",
+        "Answer mentions the put-back-or-leak pattern",
+        "Answer includes a pool sizing heuristic (size = max_concurrent_requests / worker_num or similar)",
+        "Answer is 200-400 words"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Our worker is losing exceptions inside go() blocks and the audit rows are missing the trace_id.",
+      "expected_output": "The router recognises this as an observability pipeline question. Picks utopia-span-expert + utopia-audit-expert and redirects the go() question to the swoole-expert skill in appwrite-conventions.",
+      "files": [],
+      "expectations": [
+        "Picks 2-3 skills: utopia-span-expert and utopia-audit-expert at minimum",
+        "Notes that the go() exception question is a Swoole concern and directs to swoole-expert",
+        "Answer mentions stamping span.trace_id into the audit data map",
+        "Answer mentions that uncaught exceptions inside go() disappear silently",
+        "Does NOT answer the go() part from its own training — defers to swoole-expert"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "How do Appwrite functions get their environment variables?",
+      "expected_output": "The router returns a no-match response explaining this is about application-level code in appwrite/appwrite, not a utopia-php library.",
+      "files": [],
+      "expectations": [
+        "Does NOT load any utopia expert skill",
+        "Returns a no-match or fallback message",
+        "Suggests the question may be about application code (appwrite/appwrite, appwrite/cloud) not a utopia-php library",
+        "May suggest utopia-config-expert or utopia-http-expert as loosely related but not direct answers"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "How does custom-domain onboarding work with DNS and certificate issuance?",
+      "expected_output": "The router recognises the custom-domain onboarding composition pairing from the INDEX. Picks utopia-domains-expert + utopia-dns-expert + utopia-vcs-expert.",
+      "files": [],
+      "expectations": [
+        "Picks 2-3 skills from the custom-domain pairing: utopia-domains-expert and utopia-dns-expert at minimum",
+        "Answer mentions Domain::isKnown() or isPrivate() for rejecting private suffixes",
+        "Answer mentions the ACME DNS-01 challenge pattern or TXT record serving",
+        "Does not pick unrelated skills like utopia-pay-expert or utopia-cache-expert"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "The Cache::load method keeps returning false even though I just saved data — what's going on?",
+      "expected_output": "The router picks utopia-cache-expert (single skill). Answer covers the read-time TTL semantics, the hash sub-key mechanism, and the falsy-data gotcha with save() return values.",
+      "files": [],
+      "expectations": [
+        "Picks exactly 1 skill: utopia-cache-expert",
+        "Answer mentions that load passes TTL on read, not write — the stored mtime is checked against the TTL parameter",
+        "Answer mentions the hash sub-key version mechanism",
+        "Answer warns about the save() falsy return gotcha (save returns data, not bool, so falsy data like [] trips if-checks)"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "We want to send SMS notifications via Twilio but fall back to Vonage if Twilio fails. How should we wire this?",
+      "expected_output": "The router picks utopia-messaging-expert (primary) and possibly utopia-queue-expert (secondary). Answer covers the adapter pattern, GEOSMS meta-adapter for country routing, and the queue-based fallback chain pattern.",
+      "files": [],
+      "expectations": [
+        "Picks utopia-messaging-expert",
+        "Answer mentions the adapter pattern and that Twilio and Vonage are both available as SMS adapters",
+        "Answer mentions wrapping adapters in a queue worker for fallback chains",
+        "If it picks a second skill, it should be utopia-queue-expert (for the queue-based retry/fallback pattern)"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "What validators are available and how do I compose them for a username field?",
+      "expected_output": "The router picks utopia-validators-expert (single skill). Answer covers Text, WhiteList, Multiple composition, and the named-args gotcha for Text's constructor.",
+      "files": [],
+      "expectations": [
+        "Picks exactly 1 skill: utopia-validators-expert",
+        "Answer mentions Multiple or AllOf for composing validators",
+        "Answer mentions the Text constructor parameter order gotcha (length is max, second arg is min)",
+        "Answer provides a concrete example like new Multiple([new Text(36, 3), ...])"
+      ]
+    }
+  ]
+}

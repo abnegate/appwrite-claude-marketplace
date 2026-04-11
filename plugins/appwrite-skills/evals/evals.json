@@ -1,0 +1,89 @@
+{
+  "skill_name": "appwrite-skills",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "We need to understand how the billing null guard bug got introduced across the cloud and appwrite services",
+      "expected_output": "/fanout decomposes this into 3-5 independent research questions targeting billing/null handling across multiple repos, dispatches as parallel subagents in one message, and synthesises into a plan.",
+      "files": [],
+      "expectations": [
+        "Decomposes into 3-5 research questions",
+        "Each question is narrow and factual (answerable by reading code, not requiring creative work)",
+        "Questions are independent (no question depends on another's answer)",
+        "At least one question targets the Cache/billing layer",
+        "At least one question targets the database/document layer",
+        "Dispatches subagents in a single Agent tool call message (not sequentially)",
+        "Does NOT start editing before all subagents return"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Rename the handleUser function to processUser in src/User.php",
+      "expected_output": "/fanout should NOT decompose this — it's a trivial single-file edit. The skill should tell the user to just edit directly.",
+      "files": [],
+      "expectations": [
+        "Does NOT decompose into subagents",
+        "Recommends a direct edit instead",
+        "Response is short and actionable"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "/swoole-audit .",
+      "expected_output": "Swoole audit runs 11 parallel subagents scanning the current directory for all categories: runtime hooks, blocking I/O, shared state, pools, long-running footguns, concurrency primitives, server config, signals, shared memory, extension compat, testing.",
+      "files": [],
+      "expectations": [
+        "Identifies Swoole entry points (Swoole\\Http\\Server, Swoole\\Server, etc.) with file:line",
+        "Dispatches 11 parallel subagents (one per audit category) in a single message",
+        "Produces a P0/P1/P2 prioritised report",
+        "Each finding includes file:line and a one-line description",
+        "Skips categories that don't apply and notes which were skipped",
+        "Excludes vendor/ and tests/ from scanning",
+        "Does not produce false positives for safe scratch targets (node_modules, dist, etc.)"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "/swoole-fix\n  bin/http.php:18 — PDO before Co::set\n  src/Service/Cache.php:24 — Redis static singleton across coroutines",
+      "expected_output": "Swoole fix classifies the 2 findings (1 mechanical, 1 structural), loads swoole-expert as primary reference, dispatches fix subagents, returns 2 diffs with swoole-expert section citations.",
+      "files": [],
+      "expectations": [
+        "Classifies each finding as mechanical, structural, or uncertain",
+        "Loads the swoole-expert skill as primary reference for fix patterns",
+        "Dispatches fix subagents (one batch for mechanical, one per structural)",
+        "Each proposed diff cites a specific swoole-expert section",
+        "Does NOT auto-apply diffs — presents them for human review",
+        "Does not fix more than 10 findings in one run"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "/merge-conflict origin/main",
+      "expected_output": "Merge conflict resolution dispatches per-file analysis as parallel subagents with both sides' history, classifies each file as orthogonal/overlapping/contradictory, auto-resolves the first two, leaves contradictory files for review.",
+      "files": [],
+      "expectations": [
+        "Enumerates conflicted files via git diff --name-only --diff-filter=U",
+        "For each file, gathers both sides' history (git log HEAD vs MERGE_HEAD) and the common ancestor",
+        "Classifies each file as orthogonal, overlapping, or contradictory",
+        "Auto-resolves orthogonal and overlapping files (writes resolved content + git add)",
+        "Does NOT auto-resolve contradictory files — lists them for human review with both sides' intent summaries",
+        "Does NOT run git commit — leaves that to the user",
+        "Does NOT delete a file if only one side deleted it — flags as contradictory"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "/marketplace-help swoole",
+      "expected_output": "Lists only Swoole-related items across the marketplace: swoole-expert skill, /swoole-audit command, /swoole-fix command. Other plugins with no Swoole matches are omitted entirely.",
+      "files": [],
+      "expectations": [
+        "Output is filtered to items matching 'swoole' in name or description",
+        "Includes swoole-expert skill from appwrite-conventions",
+        "Includes /swoole-audit command from appwrite-skills",
+        "Includes /swoole-fix command from appwrite-skills",
+        "Does NOT include unrelated items (e.g. /fanout, utopia-http-expert)",
+        "Groups results by plugin with plugin description headers"
+      ]
+    }
+  ]
+}

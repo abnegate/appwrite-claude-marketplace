@@ -25,7 +25,7 @@ from pathlib import Path
 MAX_DESCRIPTION_CHARS = 500
 
 FRONTMATTER_RE = re.compile(r'^---\n(.*?)\n---', re.DOTALL)
-YAML_FIELD_RE = re.compile(r'^(\w+):\s*(.*?)$', re.MULTILINE)
+YAML_FIELD_RE = re.compile(r'^([\w-]+):\s*(.*?)$', re.MULTILINE)
 
 
 def parse_frontmatter(content: str) -> dict[str, str]:
@@ -180,6 +180,51 @@ def main() -> int:
         except json.JSONDecodeError as exception:
             errors.append(f'{hooks_json}: invalid JSON ({exception})')
 
+    # Evals: plugins/*/evals/evals.json (skill-creator format)
+    eval_count = 0
+    for eval_json in sorted(root.glob('plugins/*/evals/evals.json')):
+        try:
+            data = json.loads(eval_json.read_text())
+        except json.JSONDecodeError as exception:
+            errors.append(f'{eval_json}: invalid JSON ({exception})')
+            continue
+        if not isinstance(data, dict):
+            errors.append(f'{eval_json}: top-level must be an object')
+            continue
+        if 'skill_name' not in data:
+            errors.append(f'{eval_json}: missing `skill_name` field')
+        evals = data.get('evals', [])
+        if not isinstance(evals, list):
+            errors.append(f'{eval_json}: `evals` must be an array')
+            continue
+        for entry in evals:
+            eid = entry.get('id', '?')
+            if 'prompt' not in entry:
+                errors.append(f'{eval_json}: eval {eid} missing `prompt`')
+            if 'expected_output' not in entry:
+                errors.append(f'{eval_json}: eval {eid} missing `expected_output`')
+            if 'expectations' in entry and not isinstance(entry['expectations'], list):
+                errors.append(f'{eval_json}: eval {eid} `expectations` must be an array')
+        eval_count += len(evals)
+
+    # Trigger eval files: plugins/*/evals/trigger-*.json
+    trigger_count = 0
+    for trigger_json in sorted(root.glob('plugins/*/evals/trigger-*.json')):
+        try:
+            data = json.loads(trigger_json.read_text())
+        except json.JSONDecodeError as exception:
+            errors.append(f'{trigger_json}: invalid JSON ({exception})')
+            continue
+        if not isinstance(data, list):
+            errors.append(f'{trigger_json}: top-level must be an array')
+            continue
+        for item in data:
+            if 'query' not in item:
+                errors.append(f'{trigger_json}: entry missing `query`')
+            if 'should_trigger' not in item:
+                errors.append(f'{trigger_json}: entry missing `should_trigger`')
+        trigger_count += len(data)
+
     skill_count = len(seen_skill_names)
     command_count = len(seen_command_names)
     agent_count = len(seen_agent_names)
@@ -189,14 +234,16 @@ def main() -> int:
             print(f'  {error}', file=sys.stderr)
         print(
             f'\nFAIL: {len(errors)} errors across {skill_count} skills, '
-            f'{command_count} commands, {agent_count} agents',
+            f'{command_count} commands, {agent_count} agents, '
+            f'{eval_count} evals, {trigger_count} trigger queries',
             file=sys.stderr,
         )
         return 1
 
     print(
         f'OK: {skill_count} skills, {command_count} commands, '
-        f'{agent_count} agents — all valid'
+        f'{agent_count} agents, {eval_count} evals, '
+        f'{trigger_count} trigger queries — all valid'
     )
     return 0
 

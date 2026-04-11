@@ -27,8 +27,8 @@ jobs:
           APPWRITE_HOOKS_NO_METRICS: '1'
         run: python3 plugins/appwrite-hooks/hooks/test_hooks.py
 
-  validate:
-    name: skill + command + manifest validation
+  unit-tests:
+    name: validator + generator unit tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -38,7 +38,24 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Validate frontmatter + JSON manifests
+      - name: Run validate_skills.py tests
+        run: python3 tests/test_validate_skills.py
+
+      - name: Run generate_index.py tests
+        run: python3 tests/test_generate_index.py
+
+  validate:
+    name: skill + command + manifest + eval validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate frontmatter + JSON manifests + eval shapes
         run: python3 scripts/validate_skills.py
 
   index:

@@ -1,0 +1,18 @@
+[
+  {"query": "we need to understand how the billing null guard bug got introduced across our cloud and appwrite services — there are at least 4 recent fix commits touching different repos", "should_trigger": true},
+  {"query": "investigate how permissions work in the database layer across all the adapters — MariaDB, Postgres, Mongo, and SQLite handle authorization differently and I need to understand the delta", "should_trigger": true},
+  {"query": "survey the current state of Swoole pool lifecycle across cloud, edge, and database repos — which entry points create which pools, and are they all doing it in onWorkerStart?", "should_trigger": true},
+  {"query": "figure out where the VCS adapter interface differs between github, gitlab, and gitea — I'm about to add a bitbucket adapter and need to know what's consistent vs what varies", "should_trigger": true},
+  {"query": "trace the execution flow of a document create from the HTTP route through the platform action into the database adapter, including any event publishing", "should_trigger": true},
+  {"query": "find all the places we handle null billing plans across cloud and console and see if they follow the same guard pattern or if some are missing", "should_trigger": true},
+  {"query": "i need a plan for refactoring the event publisher stuff across appwrite, cloud, and edge — the publisherForStatsResources pattern was introduced in 1.8 but not all services adopted it", "should_trigger": true},
+  {"query": "deep research into how our messaging providers are configured across environments — development uses mock, staging uses a single provider, production uses GEOSMS routing", "should_trigger": true},
+  {"query": "rename handleUser to processUser in src/User.php", "should_trigger": false},
+  {"query": "what's the syntax for a PHP match expression? never used one before", "should_trigger": false},
+  {"query": "commit my changes with a conventional commit message", "should_trigger": false},
+  {"query": "write a unit test for the Abuse::check method", "should_trigger": false},
+  {"query": "fix this typo in the error message on line 42", "should_trigger": false},
+  {"query": "bump the version in composer.json to 0.34.0", "should_trigger": false},
+  {"query": "add a @todo comment on this method explaining the race condition", "should_trigger": false},
+  {"query": "can you explain what this regex does: /^\\d+\\.\\d+\\.x$/", "should_trigger": false}
+]

@@ -1,0 +1,18 @@
+[
+  {"query": "hey can you check if our cloud codebase has any swoole issues? worried about worker blocking under production load", "should_trigger": true},
+  {"query": "i think we have a pool leak somewhere in the http worker — connections keep timing out after a few hours. can you scan for swoole anti-patterns?", "should_trigger": true},
+  {"query": "audit this php project for coroutine safety issues — I want to find anything that could block the event loop or share state across coroutines", "should_trigger": true},
+  {"query": "run a static analysis on the Swoole parts of our backend — looking for enableCoroutine ordering bugs and shared singletons", "should_trigger": true},
+  {"query": "look through the edge repo and tell me if anything will blow up under production load from a Swoole perspective", "should_trigger": true},
+  {"query": "are we setting enableCoroutine in the right place in bin/http.php? I noticed we construct PDO before the hook call and I think that might not get hooked", "should_trigger": true},
+  {"query": "scan for shared singletons across coroutines — we had a Redis handle bleed between requests last week and I want to know if there are more", "should_trigger": true},
+  {"query": "can you do a full Swoole review of this Hyperf project? not Appwrite — it's a separate service but same kind of Swoole setup", "should_trigger": true},
+  {"query": "format this php file according to PSR-12", "should_trigger": false},
+  {"query": "write a unit test for the UserController::create method", "should_trigger": false},
+  {"query": "how does swoole coroutine scheduling work? I want to understand cooperative vs preemptive", "should_trigger": false},
+  {"query": "audit our TypeScript frontend for accessibility issues", "should_trigger": false},
+  {"query": "check the package.json for npm audit vulnerabilities above moderate severity", "should_trigger": false},
+  {"query": "run the phpunit test suite and tell me which tests are failing", "should_trigger": false},
+  {"query": "debug this crashing Swoole server — I'm getting segfaults on startup and need to figure out the cause", "should_trigger": false},
+  {"query": "add a new onWorkerStart callback to bin/http.php that initialises the GeoIP database", "should_trigger": false}
+]
