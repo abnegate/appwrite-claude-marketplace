@@ -22,6 +22,9 @@ when you see them so edits stay consistent.
 
 ## Routing (utopia-php/framework)
 
+*→ Deep dive: `utopia-http-expert` for the full framework API, hooks,
+telemetry wiring, and FPM/Swoole adapters.*
+
 Routes are declared on an `App` instance with fluent chaining:
 
 ```php
@@ -55,6 +58,9 @@ Key points:
 
 ## Dependency injection (App::setResource)
 
+*→ Deep dive: `utopia-di-expert` for the PSR-11 container, parent-child
+scoping, and the lazy-singleton + request-scope pattern.*
+
 ```php
 App::setResource('dbForProject', function (Document $project, Cache $cache, Connection $connection) {
     $database = new Database(new MySQL($connection), $cache);
@@ -72,6 +78,11 @@ App::setResource('dbForProject', function (Document $project, Cache $cache, Conn
   default. Use `setResource(..., fresh: false)` for singletons.
 
 ## Database query layer (utopia-php/database)
+
+*→ Deep dive: `utopia-database-expert` for adapters, permissions, the
+filter chain, transactions, `Mirror`, and cache invalidation semantics.
+For the standalone backend-agnostic query DSL that's been extracted
+into its own library, also see `utopia-query-expert`.*
 
 ### Queries
 
@@ -127,6 +138,10 @@ adapters override the SQL-specific pieces:
 
 ## Pools (utopia-php/pools)
 
+*→ Deep dive: `utopia-pools-expert` for `Pool<TResource>`, reclaim/retry/
+reconnect semantics, the `Group::use()` scoped borrow idiom, telemetry
+gauges, and sizing heuristics.*
+
 ```php
 $pool = new Pool('name', size: 64, init: fn () => new Connection(...));
 $resource = $pool->pop();
@@ -146,6 +161,10 @@ try {
   pushing resources back (leak).
 
 ## Validators (utopia-php/framework)
+
+*→ Deep dive: `utopia-validators-expert` for the full validator
+catalogue, composition (`Multiple`, `Nullable`, `AllOf`, `AnyOf`,
+`NoneOf`), and the SDK type-mapping gotchas.*
 
 ```php
 use Utopia\Validator\UID;
@@ -167,6 +186,11 @@ use Utopia\Validator\Range;
 
 ## Events and queues (utopia-php/queue, utopia-php/pubsub)
 
+*→ Deep dive: `utopia-queue-expert` for the Redis/AMQP brokers, the
+`Commit`/`NoCommit`/`Retryable` ack semantics, DI-driven job handlers,
+and priority-tier patterns. For outbound delivery (SMS/push/email),
+see `utopia-messaging-expert`.*
+
 ```php
 $queue->enqueue(new Message('events-queue', [
     'event' => 'databases.*.collections.*.documents.*.create',
@@ -185,6 +209,13 @@ $queue->enqueue(new Message('events-queue', [
   bundles related resources under a single publisher for throughput.
 
 ## SDK codegen (utopia-php/sdk-generator)
+
+*Note: `utopia-php/sdk-generator` is the SDK generation tool itself —
+it consumes labels from `utopia-http-expert` routes and validators from
+`utopia-validators-expert` to produce client libraries. There's no
+standalone `sdk-generator-expert` skill because the tool is usually
+driven from outside via `composer update`; if you need to hack on its
+templates, clone the repo directly.*
 
 When you change an endpoint:
 1. The `->label('sdk.method', ...)` / `->label('sdk.namespace', ...)`

@@ -13,6 +13,50 @@ When using this skill:
 - Never share a connection across coroutines — use a pool
 - Remember workers are **resident** processes, not short-lived like php-fpm
 
+## Table of contents
+
+This skill is long (~1,650 lines). For targeted lookups, jump directly
+to the section you need. The `/swoole-audit` and `/swoole-fix` commands
+cite these anchors by name (e.g. `swoole-expert#3-swoole-runtime-enablecoroutine-and-hook-flags`).
+
+1. [The long-running process mental model](#1-the-long-running-process-mental-model)
+   — Four object lifetimes; what breaks vs php-fpm (superglobals, `session_start`,
+   `echo`, `exit`, `header`, static state); max_request and worker recycling.
+2. [Coroutines — `go()`, `Co\run()`, the scheduler](#2-coroutines--go-corun-the-scheduler)
+   — Cooperative scheduling, parent/child priority, introspection, cancellation,
+   `setTimeLimit`.
+3. [`Swoole\Runtime::enableCoroutine()` and hook flags](#3-swoolerunntimeenablecoroutine-and-hook-flags)
+   — Every `SWOOLE_HOOK_*` flag including 6.2 additions (`PDO_FIREBIRD`, `MONGODB`,
+   `NET_FUNCTION`); what's not hookable; ordering requirements.
+4. [Concurrency primitives — Channel, WaitGroup, Barrier, defer](#4-concurrency-primitives--channel-waitgroup-barrier-defer)
+   — `Channel`, `WaitGroup`, `Barrier`, `defer`, `batch`/`parallel`/`map`, `Timer`.
+5. [HTTP / WebSocket / TCP servers](#5-http--websocket--tcp-servers)
+   — `Http\Server`, `WebSocket\Server`, TCP with packet framing, all events,
+   `Request`/`Response` API, task workers, dispatch modes, graceful reload.
+6. [`Swoole\Process` and `Swoole\Process\Pool`](#6-swooleprocess-and-swooleprocesspool)
+   — Signal handling, IPC, when to use each.
+7. [Shared memory — `Table`, `Atomic`, `Lock`](#7-shared-memory--table-atomic-lock)
+   — Table sizing, Atomic counters, and why `Lock` isn't coroutine-safe.
+8. [Coroutine clients](#8-coroutine-clients)
+   — `Http\Client`, `Http2\Client`, `Socket`, hooked PDO + cURL (Guzzle works).
+9. [Connection pooling — `swoole/library`](#9-connection-pooling--swoolelibrary)
+   — `ConnectionPool`, `PDOPool`, `RedisPool`, `MysqliPool`, channel-as-pool
+   pattern, "put it back or leak" rule.
+10. [Pitfalls catalog](#10-pitfalls-catalog)
+    — Blocking inside coroutines, sharing connections, `pcntl_*`, deadlocks,
+    cooperative ≠ concurrent-safe, exception handling, framework compatibility.
+11. [Production tuning](#11-production-tuning)
+    — `worker_num`, `max_request`, `reload_async`, buffers, dispatch modes,
+    kernel sysctls.
+12. [Debugging](#12-debugging)
+    — Live introspection, Xdebug incompatibility, GDB with gdbinit.
+13. [Testing](#13-testing)
+    — PHPUnit entry point, state reset, `swoole/ide-helper`.
+14. [Swoole 6.x version notes](#14-swoole-6x-version-notes)
+    — What's new/removed in 6.0, 6.1, 6.2, build flags, `swoole/library` version alignment.
+15. [Quick reference — canonical program skeleton](#quick-reference--canonical-program-skeleton)
+    — A minimal production-shaped entry point with every major concept wired.
+
 ---
 
 ## 1. The long-running process mental model
