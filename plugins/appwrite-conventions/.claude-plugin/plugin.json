@@ -1,0 +1,8 @@
+{
+  "name": "appwrite-conventions",
+  "version": "0.1.0",
+  "description": "Utopia framework, Swoole, and Appwrite coding conventions auto-loaded as CLAUDE.md context",
+  "author": {
+    "name": "Jake Barnby"
+  }
+}

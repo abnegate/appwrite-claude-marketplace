@@ -1,0 +1,8 @@
+{
+  "name": "appwrite-hooks",
+  "version": "0.1.0",
+  "description": "PreToolUse hooks that enforce conventional commits, regression tests for fixes, format-and-lint before commit, and block --no-verify / --amend footguns",
+  "author": {
+    "name": "Jake Barnby"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "appwrite-skills",
+  "version": "0.1.0",
+  "description": "Slash commands for parallel subagent fanout, Swoole/coroutine auditing, and intent-aware merge conflict resolution",
+  "author": {
+    "name": "Jake Barnby"
+  }
+}

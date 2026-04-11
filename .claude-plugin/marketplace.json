@@ -1,0 +1,29 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "appwrite-claude-marketplace",
+  "version": "0.1.0",
+  "description": "Claude Code skills, hooks, and conventions tuned for Appwrite/Utopia/Swoole workflows. Enforces conventional commits and regression-test discipline, catches Swoole pool/coroutine bugs, accelerates multi-repo work with parallel subagent fanout, and compresses Utopia framework context into every session.",
+  "owner": {
+    "name": "Jake Barnby"
+  },
+  "plugins": [
+    {
+      "name": "appwrite-hooks",
+      "description": "PreToolUse hooks that enforce conventional commits, regression tests for fixes, format-and-lint before commit, and block --no-verify / --amend footguns",
+      "source": "./plugins/appwrite-hooks",
+      "category": "productivity"
+    },
+    {
+      "name": "appwrite-skills",
+      "description": "Slash commands for parallel subagent fanout, Swoole/coroutine auditing, and intent-aware merge conflict resolution",
+      "source": "./plugins/appwrite-skills",
+      "category": "development"
+    },
+    {
+      "name": "appwrite-conventions",
+      "description": "Utopia framework, Swoole, and Appwrite coding conventions auto-loaded as CLAUDE.md context. Encodes composer version rules, namespace layout, callable syntax, and testing preferences so every session starts with the right priors.",
+      "source": "./plugins/appwrite-conventions",
+      "category": "development"
+    }
+  ]
+}
