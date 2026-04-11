@@ -24,7 +24,9 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from _shared import allow, block, extract_git_commit, read_tool_input
+from _shared import allow, block, extract_git_commit, read_tool_input, skip
+
+HOOK = 'format_lint'
 
 
 def staged_files(cwd: str) -> list[str]:
@@ -83,19 +85,19 @@ def run(cmd: list[str], cwd: Path, label: str) -> tuple[bool, str]:
 
 def main() -> None:
     if os.environ.get('APPWRITE_HOOKS_SKIP_LINT') == '1':
-        allow()
+        skip(HOOK, 'Bash')
 
     tool_name, tool_input = read_tool_input()
     if tool_name != 'Bash':
-        allow()
+        skip(HOOK, tool_name)
 
     argv = extract_git_commit(tool_input.get('command', ''))
     if argv is None:
-        allow()
+        skip(HOOK, tool_name)
 
     files = staged_files(tool_input.get('cwd', ''))
     if not files:
-        allow()
+        skip(HOOK, tool_name)
 
     repo_root = find_repo_root(tool_input.get('cwd', ''))
     results: list[tuple[bool, str]] = []
@@ -132,12 +134,15 @@ def main() -> None:
     failures = [output for ok, output in results if not ok]
     if failures:
         block(
+            HOOK,
+            tool_name,
             'BLOCKED: format/lint checks failed. Fix and retry.\n\n'
             + '\n\n'.join(failures)
-            + '\n\n(Override with APPWRITE_HOOKS_SKIP_LINT=1 if strictly necessary.)'
+            + '\n\n(Override with APPWRITE_HOOKS_SKIP_LINT=1 if strictly necessary.)',
+            reason='lint failed',
         )
 
-    allow()
+    allow(HOOK, tool_name)
 
 
 if __name__ == '__main__':

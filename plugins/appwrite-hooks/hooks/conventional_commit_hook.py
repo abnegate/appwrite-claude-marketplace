@@ -29,7 +29,10 @@ from _shared import (
     extract_commit_message,
     extract_git_commit,
     read_tool_input,
+    skip,
 )
+
+HOOK = 'conventional_commit'
 
 ALLOWED_TYPES = (
     'feat',
@@ -57,30 +60,36 @@ MERGE = re.compile(r'^(Merge|Revert) ', re.IGNORECASE)
 def main() -> None:
     tool_name, tool_input = read_tool_input()
     if tool_name != 'Bash':
-        allow()
+        skip(HOOK, tool_name)
 
     argv = extract_git_commit(tool_input.get('command', ''))
     if argv is None:
-        allow()
+        skip(HOOK, tool_name)
 
     message = extract_commit_message(argv)
     if message is None:
         # No -m flag means git will open $EDITOR. That's fine for interactive
         # use, but Claude Code can't drive an editor — let it fail naturally
         # instead of blocking here.
-        allow()
+        skip(HOOK, tool_name)
 
     first_line = message.strip().splitlines()[0] if message.strip() else ''
     if not first_line:
         block(
+            HOOK,
+            tool_name,
             'BLOCKED: empty commit message. Use `(type): subject` format, '
-            f'where type is one of: {", ".join(ALLOWED_TYPES)}.'
+            f'where type is one of: {", ".join(ALLOWED_TYPES)}.',
+            reason='empty message',
         )
 
     if MERGE.match(first_line) or CONVENTIONAL.match(first_line):
-        allow()
+        allow(HOOK, tool_name)
+        return
 
     block(
+        HOOK,
+        tool_name,
         f'BLOCKED: commit message does not follow conventional format.\n\n'
         f'  Got:      {first_line!r}\n'
         f'  Expected: (type): subject\n'
@@ -89,7 +98,8 @@ def main() -> None:
         f'  (feat): add gitea webhook handler\n'
         f'  (fix): guard against null billing plan cache\n'
         f'  (refactor): extract publisher resource wiring\n\n'
-        f'Rewrite the commit message and retry.'
+        f'Rewrite the commit message and retry.',
+        reason='non-conventional format',
     )
 
 
