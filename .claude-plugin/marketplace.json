@@ -24,6 +24,12 @@
       "description": "Utopia framework, Swoole, and Appwrite coding conventions auto-loaded as CLAUDE.md context. Encodes composer version rules, namespace layout, callable syntax, and testing preferences so every session starts with the right priors.",
       "source": "./plugins/appwrite-conventions",
       "category": "development"
+    },
+    {
+      "name": "utopia-experts",
+      "description": "50 expert-level skill references — one per utopia-php library — loaded as on-demand context for Appwrite-stack work. Each skill captures public API, core patterns, gotchas, and leverage opportunities sourced from deep research across the utopia-php org.",
+      "source": "./plugins/utopia-experts",
+      "category": "development"
     }
   ]
 }

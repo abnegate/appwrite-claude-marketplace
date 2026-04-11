@@ -1,0 +1,8 @@
+{
+  "name": "utopia-experts",
+  "version": "0.1.0",
+  "description": "50 expert-level skill references for every library in the utopia-php ecosystem. Auto-loaded as reference context when working on Appwrite-stack code.",
+  "author": {
+    "name": "Jake Barnby"
+  }
+}
