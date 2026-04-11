@@ -6,6 +6,49 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-04-12
+
+### Changed
+- **Scope broadened from PHP-only to the full Appwrite ecosystem.**
+  The conventions now cover three domains — Backend (PHP/Utopia/
+  Swoole), Frontend (SvelteKit Console with Svelte 5 runes), and
+  Infrastructure (Terraform with DigitalOcean/Cloudflare/K8s/Helm
+  providers) — plus a cross-cutting section for rules that apply
+  everywhere (testing, commits, PRs, cross-repo awareness).
+- `CLAUDE.md` restructured into four clearly delimited sections so
+  each domain is self-contained. The backend section is unchanged
+  from 0.2.0 apart from being moved under an H1.
+
+### Added
+- **Frontend section** grounded directly in the real `AGENTS.md`
+  from the `appwrite/console` repo. Covers the stack (SvelteKit 2 +
+  Svelte 5 + TypeScript + Vite + rolldown-vite), tooling (bun for
+  everything, `bun run <script>` always), route structure (three
+  layout groups: public/console/authenticated), path aliases,
+  barrel imports, Svelte 5 runes (preferred on new code; ~500
+  legacy files still mid-migration), SDK clients and region-aware
+  routing, data loading with `depends()` + 66-key `Dependencies`
+  enum, state management patterns (writable/derived/conservative),
+  wizard modal, notifications, analytics, theming (4 variants x 2
+  modes), code style (Prettier 4-space), and common pitfalls.
+- **Infrastructure section** covering Terraform conventions for
+  the standard Appwrite Cloud stack: provider pinning with `~>`
+  ranges, remote state with locking, one-state-per-environment,
+  environment-prefixed kebab-case resource naming, mandatory tags,
+  secrets via `tfvars`/env/secrets-manager (never committed), thin
+  root module + one-concern modules with typed variables, safety
+  rules (plan before apply, no `-target` outside emergency,
+  `prevent_destroy` on stateful resources).
+- **Cross-cutting section** consolidating testing, branch/PR
+  discipline, and cross-repo awareness rules so they're visible
+  for all domains.
+
+### Plugin metadata
+- `.claude-plugin/plugin.json` description updated to reflect the
+  broader scope
+- Marketplace `marketplace.json` entry updated with the new scope
+- Version bumped to 0.3.0
+
 ## [0.2.0] — 2026-04-12
 
 ### Added

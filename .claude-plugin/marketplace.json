@@ -21,7 +21,7 @@
     },
     {
       "name": "appwrite-conventions",
-      "description": "Utopia framework, Swoole, and Appwrite coding conventions auto-loaded as CLAUDE.md context. Encodes composer version rules, namespace layout, callable syntax, and testing preferences so every session starts with the right priors.",
+      "description": "Appwrite ecosystem coding conventions covering backend (PHP/Utopia/Swoole), frontend (SvelteKit Console with Svelte 5 runes, bun tooling, @appwrite.io/pink design system), and infrastructure (Terraform with DigitalOcean/Cloudflare/Kubernetes/Helm providers). Frontend section grounded in the real AGENTS.md from the appwrite/console repo. Auto-loaded as CLAUDE.md, plus utopia-patterns and swoole-expert on-demand reference skills.",
       "source": "./plugins/appwrite-conventions",
       "category": "development"
     },

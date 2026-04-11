@@ -1,7 +1,7 @@
 {
   "name": "appwrite-conventions",
-  "version": "0.1.0",
-  "description": "Utopia framework, Swoole, and Appwrite coding conventions auto-loaded as CLAUDE.md context",
+  "version": "0.3.0",
+  "description": "Appwrite ecosystem coding conventions across backend (PHP/Utopia/Swoole), frontend (SvelteKit Console), and infrastructure (Terraform/DO/Cloudflare/K8s). Auto-loaded as CLAUDE.md context plus the utopia-patterns and swoole-expert on-demand reference skills.",
   "author": {
     "name": "Jake Barnby"
   }
