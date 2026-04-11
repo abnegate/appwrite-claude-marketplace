@@ -366,5 +366,51 @@ class DestructiveGuardTests(unittest.TestCase):
         self.assertEqual(code, 0)
 
 
+class ConflictMarkerHookTests(unittest.TestCase):
+    """Conflict-marker hook can't fully test without a real git repo, but we
+    can verify it ignores non-git and non-Bash calls."""
+
+    HOOK = 'conflict_marker_hook.py'
+
+    def test_ignores_non_bash(self) -> None:
+        code, _ = call_hook(self.HOOK, {'file_path': '/tmp/x'}, tool_name='Read')
+        self.assertEqual(code, 0)
+
+    def test_ignores_non_git_bash(self) -> None:
+        code, _ = call_hook(self.HOOK, {'command': 'echo hello'})
+        self.assertEqual(code, 0)
+
+    def test_allows_normal_commit(self) -> None:
+        code, _ = call_hook(self.HOOK, {'command': 'git commit -m "(feat): add foo"'})
+        self.assertEqual(code, 0)
+
+
+class TempCodeHookTests(unittest.TestCase):
+    """Same limitation as conflict-marker — real diff-based testing needs a
+    git repo. Here we verify passthrough and opt-out paths."""
+
+    HOOK = 'temp_code_hook.py'
+
+    def test_ignores_non_bash(self) -> None:
+        code, _ = call_hook(self.HOOK, {'file_path': '/tmp/x'}, tool_name='Read')
+        self.assertEqual(code, 0)
+
+    def test_ignores_non_git_bash(self) -> None:
+        code, _ = call_hook(self.HOOK, {'command': 'echo hello'})
+        self.assertEqual(code, 0)
+
+    def test_allows_normal_commit(self) -> None:
+        code, _ = call_hook(self.HOOK, {'command': 'git commit -m "(feat): add foo"'})
+        self.assertEqual(code, 0)
+
+    def test_opt_out_allows(self) -> None:
+        code, _ = call_hook(
+            self.HOOK,
+            {'command': 'git commit -m "(feat): temp stuff"'},
+            env_overrides={'APPWRITE_HOOKS_ALLOW_TEMP_CODE': '1'},
+        )
+        self.assertEqual(code, 0)
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

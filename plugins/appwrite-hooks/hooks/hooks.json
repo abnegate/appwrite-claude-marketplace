@@ -1,5 +1,5 @@
 {
-  "description": "Commit-time guards: conventional commits, regression tests for fixes, format-and-lint, --no-verify/--amend blocker. Push-time guards: force-push to protected branches. Edit-time guards: secret-bearing files. Shell guards: destructive commands (rm -rf, dd, mkfs, find -delete).",
+  "description": "Commit-time guards: conflict markers, TEMP/HACK/FIXME markers, conventional commits, regression tests, format-and-lint, --no-verify/--amend. Push-time guards: force-push to protected branches. Edit-time guards: secret-bearing files. Shell guards: destructive commands.",
   "hooks": {
     "PreToolUse": [
       {
@@ -12,6 +12,14 @@
           {
             "type": "command",
             "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/force_push_guard_hook.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/conflict_marker_hook.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/temp_code_hook.py"
           },
           {
             "type": "command",

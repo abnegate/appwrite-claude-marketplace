@@ -468,6 +468,137 @@ When modifying API contracts or response models, check the other
 repos for breaking changes before merging. See the `/fanout` command
 in `appwrite-skills` for parallel cross-repo research.
 
+## Common bug patterns to avoid
+
+These patterns were extracted from 600+ fix commits across 9 Appwrite
+repos over 12 months. Each has recurred at least 5 times — they are
+the systemic failure modes of this codebase, not one-offs. When you're
+about to write code that falls into one of these categories, pause and
+apply the rule.
+
+### Null / missing guard failures (70+ instances)
+
+Nullable values flow through layers unchecked. MongoDB returns `null`
+for missing fields where SQL defaults to empty string. Cache misses
+return null silently. Document attributes that are optional in the
+schema are assumed present in application code.
+
+**Rule:** treat every document field access, cache read, and external
+API response as potentially null. Use `??` with an explicit default
+or throw early. Never chain method calls on a value that could be null
+without a guard. When adding a new document attribute, search for all
+read-sites and add null handling.
+
+### Type casting oscillation (90+ instances)
+
+PHP's weak typing means `(int)` casts get added, removed, and re-added
+across consecutive commits. Tenant IDs, sequence numbers, and database
+column types (`Float` vs `Double`) are the worst offenders. The root
+cause is no consensus on the canonical type at each boundary.
+
+**Rule:** pick one canonical type per concept at each boundary and
+document it. Tenant IDs are strings at the application boundary,
+integers at the SQL boundary — the adapter converts. Attribute sizes
+are always `int`, not string. Use `match()` (exhaustive) instead of
+`switch` for enums so missing cases fail at static analysis time.
+
+### Merge conflict residue (50+ instances)
+
+Leftover `<<<<<<<` / `=======` / `>>>>>>>` markers from incomplete
+merge resolution. Long-lived feature branches diverge significantly
+and merge resolution is rushed.
+
+**Rule:** the `conflict_marker_hook` blocks any commit with conflict
+markers in staged files. There is no override — markers must never be
+committed. When resolving merge conflicts, use `/merge-conflict` to
+classify each file by intent before editing.
+
+### Pool exhaustion / connection lifecycle (40+ instances)
+
+Pools sized too small, initialized in the main process instead of
+per-worker, connections not returned after exceptions, stale handles
+from pre-fork initialization, Redis sockets shared across coroutines.
+
+**Rule:** pools are created in `onWorkerStart`, never at file load.
+Every `pop()` has a matching `push()` in a `finally` block — use
+`Group::use()`. Pool size derives from `worker_num * max_coroutine`,
+not a hardcoded literal. Never store a connection in a static
+property. Run `/swoole-audit` on any change to pool or connection
+code.
+
+### Cache invalidation gaps (20+ instances)
+
+Write-then-purge ordering where the cache is purged before the write
+persists, creating a stale-data window. Missing purge propagation
+where a write goes through one path but the purge only exists on
+another.
+
+**Rule:** every `updateDocument` / `updateCollection` must have a
+corresponding cache purge, co-located in the same method or
+automated by the adapter. Prefer write-through caching (write to
+DB + cache atomically) over write-then-purge. Test cache correctness
+with a second connection: write, read from connection B, verify fresh
+data.
+
+### SDK / API contract drift (50+ instances)
+
+The SDK is generated from the API spec. When the backend changes
+endpoints, the console and cloud repos break because their SDK pin
+lags behind. The SDK generator itself has bugs (e.g. `Any` type
+mapping, consecutive uppercase handling) that cascade across all
+11 SDKs.
+
+**Rule:** when changing an API endpoint, also update the `sdk.method`
+/ `sdk.namespace` / `sdk.response.model` labels and run spec
+generation. Check whether the generated spec compiles against the
+console's TypeScript types. If the SDK generator needs a fix, fix it
+first and publish before updating the consuming repos.
+
+### Worker / event payload mutation (15+ instances)
+
+Event objects are constructed in the request context but fired
+asynchronously. Properties like `project`, `user`, and `collection`
+are set on a shared event object that can be overwritten before the
+worker dequeues it.
+
+**Rule:** event payloads are immutable after construction. Clone or
+snapshot the data at enqueue time, not at fire time. Use readonly
+properties or array snapshots (`$data->getArrayCopy()`) — never pass
+a mutable Document reference through a queue.
+
+### Backwards compatibility gaps (15+ instances)
+
+Enum values renamed, platform types restructured, API defaults changed
+— but existing data in production databases still has the old values.
+New code paths assume all data is in the new format.
+
+**Rule:** never remove an enum value without a data migration. Always
+add a mapping function from old to new values and test it with both
+old and new data in the same test. When changing a default value,
+check if existing documents will silently change behaviour.
+
+### TEMP code shipped (25+ instances)
+
+Commits prefixed with `TEMP:` for debugging, skipping CI jobs, or
+narrowing test scopes get merged and never cleaned up.
+
+**Rule:** the `temp_code_hook` blocks commits containing `TEMP:`,
+`HACK:`, `FIXME:`, `XXX:`, `DO NOT MERGE`, `DO NOT COMMIT`, and
+`console.log` in JS/TS/Svelte files. Use `@todo` for legitimate
+tech-debt annotations (not flagged).
+
+### Revert churn (40+ reverts in 12 months)
+
+Features merged, reverted, then re-merged with fixes — sometimes
+two or three times. Double-revert patterns indicate features going
+in and out of branches.
+
+**Rule:** features that touch more than one repo or change the
+database schema should be behind a feature flag so they can be
+disabled without reverting code. Any change that requires more than
+one follow-up fix commit should be reverted, redesigned, and
+re-submitted as a clean PR.
+
 ## What's already captured elsewhere
 
 Don't re-derive things that can be read from the code:
