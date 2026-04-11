@@ -3,7 +3,7 @@ description: Ask a utopia-php question and get a distilled answer from the right
 argument-hint: "<question about any utopia-php library>"
 ---
 
-# /utopia-lookup — Routed lookup across the 50 utopia expert skills
+# /utopia? — Routed lookup across the 50 utopia expert skills
 
 Thin wrapper around the `utopia-router` agent for times when you want to
 explicitly route a question to the utopia experts rather than relying on
@@ -40,7 +40,7 @@ automatic dispatch.
 ## Example
 
 ```
-/utopia-lookup how do I page query results with a stable cursor?
+/utopia? how do I page query results with a stable cursor?
 ```
 
 Expected router output (which this command surfaces unchanged):

@@ -8,7 +8,7 @@ There are two ways to reach the knowledge:
 
 1. **Direct load** — if you know exactly which library you need, load the matching `utopia-<library>-expert` skill yourself. Surgical and cheap (~1k tokens per skill).
 
-2. **Routed lookup** — dispatch the `utopia-router` agent (automatically via its description, or manually via `/utopia-lookup <question>`). The router runs in its own Haiku context, reads `skills/INDEX.md`, picks the 1-3 most relevant expert skills, reads them in its own window, and returns a 200-400 word synthesised answer with exact citations. Your parent session only sees the answer, not the full skill bodies.
+2. **Routed lookup** — dispatch the `utopia-router` agent (automatically via its description, or manually via `/utopia? <question>`). The router runs in its own Haiku context, reads `skills/INDEX.md`, picks the 1-3 most relevant expert skills, reads them in its own window, and returns a 200-400 word synthesised answer with exact citations. Your parent session only sees the answer, not the full skill bodies.
 
 **When routing wins:** cross-library questions, expensive parent sessions (`cloud`, `edge`, `database` historically run $230-306/session), or when you don't know which skill has the answer. The router does the catalog walk so the parent doesn't have to.
 
@@ -100,7 +100,7 @@ Hard rules the router follows:
 - Redirects Swoole questions to the `swoole-expert` skill in `appwrite-conventions`
 - Returns a 200-400 word answer with exact class/method names and citations to skill sections
 
-`commands/utopia-lookup.md` — explicit `/utopia-lookup <question>` wrapper for when you want to route manually.
+`commands/utopia?.md` — explicit `/utopia? <question>` wrapper for when you want to route manually.
 
 `scripts/generate_index.py` — regenerates `skills/INDEX.md` from the 50 SKILL.md frontmatter blocks. Run after adding, removing, or renaming a skill.
 
@@ -145,7 +145,7 @@ Via the marketplace at the repo root:
 /plugin install utopia-experts@appwrite-claude-marketplace
 ```
 
-Skills load automatically in any session where Claude detects Appwrite-stack context (composer.json with `utopia-php/*`, directory names matching Appwrite repos, etc.). The router agent dispatches automatically based on its description, or explicitly via `/utopia-lookup`.
+Skills load automatically in any session where Claude detects Appwrite-stack context (composer.json with `utopia-php/*`, directory names matching Appwrite repos, etc.). The router agent dispatches automatically based on its description, or explicitly via `/utopia?`.
 
 ## Research methodology
 
