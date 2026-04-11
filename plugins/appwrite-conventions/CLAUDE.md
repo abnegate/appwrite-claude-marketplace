@@ -1,9 +1,23 @@
 # Appwrite / Utopia / Swoole Conventions
 
-This plugin autoloads the ground-truth conventions for the Appwrite stack
-so every session starts with the right priors. When you're working in
-`appwrite`, `cloud`, `database`, `edge`, `console`, `proxy`, or
-`sdk-generator`, these rules apply. When you're not, ignore them.
+This plugin autoloads the ground-truth conventions for Appwrite PHP
+work so every session starts with the right priors.
+
+**Scope:** these rules apply to any PHP code in the Appwrite ecosystem
+— the core monorepo (`appwrite/appwrite`), Cloud, every `utopia-php/*`
+library, the SDK generator, the Functions runtimes' host-side code,
+internal services, and any new PHP project built on top of the stack.
+The PHP-specific rules (namespace layout, composer constraints,
+first-class callables, enum-vs-constant) apply anywhere PHP is used.
+The Utopia framework rules (routing, DI, validators, sparse updates)
+apply anywhere `utopia-php` is imported. The Swoole rules apply
+anywhere Swoole is the runtime.
+
+**Out of scope:** the Console frontend (Svelte/TypeScript),
+infrastructure as code (Terraform, Kubernetes manifests), runtimes in
+non-PHP languages (Node, Python, Ruby, Kotlin, etc.), and any repo
+that does not import `utopia-php/*` or run on Swoole. Those ecosystems
+have their own conventions that don't live in this plugin.
 
 ## Framework
 

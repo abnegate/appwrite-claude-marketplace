@@ -14,11 +14,12 @@ description matches the filter (case-insensitive substring).
 
 ## Execution
 
-1. Resolve the marketplace root. Look in the standard plugin
-   locations:
-   - `~/.claude/plugins/marketplaces/appwrite-claude-marketplace/`
-   - `~/Local/appwrite-claude-marketplace/` (dev checkout)
-   Pick the first one that exists.
+1. Resolve the marketplace root. The standard installed location is
+   `~/.claude/plugins/marketplaces/appwrite-claude-marketplace/`. If
+   the user has a local development checkout, it may live elsewhere
+   — check `CLAUDE_PLUGIN_ROOT` if set, otherwise fall back to a
+   Glob for `**/appwrite-claude-marketplace/.claude-plugin/marketplace.json`
+   under the user's home directory.
 
 2. For each plugin directory under `plugins/`:
    - Read `.claude-plugin/plugin.json` for the plugin description

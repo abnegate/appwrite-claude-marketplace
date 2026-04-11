@@ -10,8 +10,10 @@ touches a single file. This compresses the expensive Opus parent context by
 keeping reads and greps in cheap Haiku subagent windows.
 
 **When to use:**
-- Any task in a repo where sessions historically run >$100 (`cloud`,
-  `database`, `edge`, `sshoo`, `appwrite`).
+- Any task in a large Appwrite-stack repo where per-session context
+  accumulates quickly (`appwrite`, `cloud`, `database`, `edge`, etc.
+  — generally anything where Claude ends up reading dozens of files
+  before the first edit).
 - Anything touching more than one repo.
 - Investigation / "figure out where X is broken" requests.
 - Feature work that needs a design survey before editing.
@@ -68,7 +70,7 @@ keeping reads and greps in cheap Haiku subagent windows.
 **Input:** `/fanout fix the Swoole pool exhaustion that keeps biting on the cloud API pods`
 
 **Decomposition:**
-1. `Explore`: "Find every Swoole pool instantiation in ~/Local/cloud — which entry points (http, cli, worker) create which pools, and in what order relative to enableCoroutine?"
+1. `Explore`: "Find every Swoole pool instantiation in the cloud repo — which entry points (http, cli, worker) create which pools, and in what order relative to enableCoroutine?"
 2. `Explore`: "Where is SwoolePool imported and what's the difference between SwoolePool and plain Swoole\\Coroutine\\Channel usage in this repo?"
 3. `Explore`: "Which recent commits (last 2 weeks) touched pool initialization? Summarize subjects + file changes."
 4. `Explore`: "Are there any shared pool singletons surviving across worker forks? Look for static properties + `Co::set` placement."

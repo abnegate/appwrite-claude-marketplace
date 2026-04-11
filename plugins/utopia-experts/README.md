@@ -10,7 +10,7 @@ There are two ways to reach the knowledge:
 
 2. **Routed lookup** — dispatch the `utopia-router` agent (automatically via its description, or manually via `/utopia? <question>`). The router runs in its own Haiku context, reads `skills/INDEX.md`, picks the 1-3 most relevant expert skills, reads them in its own window, and returns a 200-400 word synthesised answer with exact citations. Your parent session only sees the answer, not the full skill bodies.
 
-**When routing wins:** cross-library questions, expensive parent sessions (`cloud`, `edge`, `database` historically run $230-306/session), or when you don't know which skill has the answer. The router does the catalog walk so the parent doesn't have to.
+**When routing wins:** cross-library questions, long/expensive parent sessions in large Appwrite repos where context accumulation is the main cost, or when you don't know which skill has the answer. The router does the catalog walk so the parent doesn't have to.
 
 **When direct load wins:** you already know which skill, the task is going to touch that library heavily anyway, or you want the full reference for active editing.
 

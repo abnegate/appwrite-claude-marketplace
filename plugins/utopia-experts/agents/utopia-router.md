@@ -13,9 +13,9 @@ Your goal: **keep the parent session's context clean** by doing the lookup and s
 
 ### 1. Read the skill index first
 
-Before anything else, read `plugins/utopia-experts/skills/INDEX.md`. It lists all 50 skills grouped by category (framework, data, storage-io, auth-security, runtime, observability, messaging-async, domain, utilities, misc) with a one-line description per skill and a "Composition notes" section listing known cross-library pairings.
+Before anything else, read the `utopia-experts` plugin's `skills/INDEX.md`. It lists all 50 skills grouped by category (framework, data, storage-io, auth-security, runtime, observability, messaging-async, domain, utilities, misc) with a one-line description per skill and a "Composition notes" section listing known cross-library pairings.
 
-If the repo root isn't `~/Local/appwrite-claude-marketplace`, locate the plugin by searching for `plugins/utopia-experts/skills/INDEX.md` under `~/.claude/plugins/` — it may be installed under a marketplace cache path.
+To find INDEX.md, check `${CLAUDE_PLUGIN_ROOT}/skills/INDEX.md` first. If that env var isn't set, Glob for `**/utopia-experts/skills/INDEX.md` under `~/.claude/plugins/` (installed location) or the current working directory (local development checkout).
 
 ### 2. Identify relevant skills
 

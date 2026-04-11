@@ -28,9 +28,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 - Command originally shipped as `/utopia-lookup` renamed to `/utopia?`
-  to match the query-suffix convention (sister renames of `/history`
-  to `/history?` and `/profile` to `/profile?` in
-  `~/Local/claudes`).
+  to match the query-suffix convention for information-retrieval
+  commands (primary output is information, not action).
 
 ## [0.1.0] — 2026-04-11
 

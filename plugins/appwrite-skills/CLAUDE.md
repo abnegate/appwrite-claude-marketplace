@@ -1,8 +1,9 @@
 # Appwrite Skills — Workflow Rules
 
-These rules apply to any session where `appwrite-skills` is loaded. They
-encode three workflow patterns that have been measured to pay off on the
-Appwrite-stack repos (cloud, database, edge, sshoo, console, proxy).
+These rules apply to any session where `appwrite-skills` is loaded.
+They encode three workflow patterns tuned for Appwrite-stack work,
+where codebases are large, per-session context grows quickly, and most
+tasks touch more than one repo.
 
 ## Model routing — Opus for edits, Haiku for research
 
@@ -26,9 +27,10 @@ size (repeated Grep/Glob/Read passes).
 ## Multi-repo work starts in plan mode
 
 Any task that touches more than one repository enters plan mode before
-the first edit. The `feat-dedicated-db` initiative spanning cloud / edge
-/ database / infrastructure is the canonical example — without a plan,
-the same refactor gets rediscovered four times.
+the first edit. Cross-repo initiatives (dedicated-database work,
+SDK regeneration cascades, interface ports between cloud and edge)
+are common in the Appwrite stack — without a plan, the same refactor
+gets rediscovered in every affected repo.
 
 **How to apply:**
 - Detect multi-repo scope by: mention of >1 repo name in the prompt,
@@ -41,9 +43,10 @@ the same refactor gets rediscovered four times.
 
 ## Edit over Write, always
 
-Prefer `Edit` (surgical changes) over `Write` (full file replacement) by
-a wide margin. This plugin's host has a measured 8:1 Edit:Write ratio —
-that pattern is load-bearing for the iterative style that's working.
+Prefer `Edit` (surgical changes) over `Write` (full file replacement)
+by a wide margin. Iterative refinement — many small targeted edits
+instead of rare full rewrites — is the load-bearing pattern for
+working on large, long-lived codebases like the Appwrite stack.
 
 **How to apply:**
 - `Write` is for new files only. If the file exists, use `Edit`.

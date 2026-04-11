@@ -41,32 +41,30 @@ without re-reading the framework source.
 
 ## Scope
 
-This plugin is framed for work in these repos:
+Install this plugin if you work on PHP code in the Appwrite ecosystem.
+Typical targets include:
 
-```
-~/Local/appwrite
-~/Local/cloud
-~/Local/database
-~/Local/edge
-~/Local/console
-~/Local/proxy
-~/Local/sdk-generator
-~/Local/query
-~/Local/open-runtimes
-```
+- **Core monorepo** — `appwrite/appwrite`
+- **Cloud** — `appwrite/cloud`
+- **Utopia libraries** — every `utopia-php/*` package (database, cache,
+  pools, http, framework, queue, messaging, storage, pay, vcs, audit,
+  telemetry, etc.)
+- **SDK tooling** — `appwrite/sdk-generator`
+- **Functions infrastructure** — `appwrite/open-runtimes` (host-side
+  PHP, not the non-PHP runtime images themselves)
+- Internal PHP services, task workers, Appwrite CLI, and any new PHP
+  project that imports a `utopia-php/*` package or runs under Swoole
 
-When you're working in a repo from a different ecosystem (Kotlin, Rust,
-Terraform), these conventions still load but don't apply. You can
-ignore them.
+The conventions auto-load into every session. When you're working on a
+Svelte frontend, Terraform module, or non-PHP runtime, the conventions
+still load silently but their rules don't apply — ignore them.
 
 ## Why auto-load instead of re-deriving
 
-The Appwrite stack has ~230 Claude sessions historically, averaging
-several kilobytes of framework preamble that Claude re-asks about every
-time: "is this Laravel?", "what's the namespace convention?", "what's
-the composer constraint format?", "is Swoole hooked?". That preamble
-compresses cleanly into a ~200-line CLAUDE.md that autoloads once per
-session.
+The framework preamble — "is this Laravel?", "what's the namespace
+convention?", "what's the composer constraint format?", "is Swoole
+hooked?" — compresses cleanly into a ~200-line CLAUDE.md that
+autoloads once per session instead of being re-derived every time.
 
 This isn't documentation you're expected to read — it's context Claude
 is expected to have before the first prompt.

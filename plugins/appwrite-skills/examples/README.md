@@ -12,8 +12,8 @@ shape of the expected output.
 
 **Decomposition (dispatched as 5 parallel subagents in one message):**
 
-1. Explore: "Find every Swoole pool instantiation in ~/Local/cloud —
-   which entry points (http, cli, worker) create which pools, and in
+1. Explore: "Find every Swoole pool instantiation in the cloud repo
+   — which entry points (http, cli, worker) create which pools, and in
    what order relative to enableCoroutine?"
 2. Explore: "Where is SwoolePool imported and what's the difference
    between SwoolePool and plain Swoole\\Coroutine\\Channel usage in
@@ -33,12 +33,12 @@ call message → waits → synthesises findings into a 3-8 bullet plan
 
 **Input:**
 ```
-/swoole-audit ~/Local/cloud
+/swoole-audit path/to/cloud
 ```
 
 **Output shape:**
 ```
-## Swoole audit — ~/Local/cloud
+## Swoole audit — path/to/cloud
 
 Entry points found (3)
   bin/http.php:12    — Swoole\Http\Server

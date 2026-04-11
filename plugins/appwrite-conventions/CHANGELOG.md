@@ -15,9 +15,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   WebSocket/TCP servers, `Swoole\Process` + `Process\Pool`, shared
   memory (Table/Atomic/Lock), coroutine clients, connection pooling,
   pitfalls, production tuning, debugging, testing, and Swoole 6.x
-  version notes. Copied from `~/Local/claudes/skills/swoole-expert`
-  and placed here because Swoole is the runtime every Utopia-based
-  service sits on.
+  version notes. Placed in this plugin because Swoole is the
+  runtime every Utopia-based service sits on.
 
 ### Changed
 - `utopia-patterns` frontmatter description now points at the
