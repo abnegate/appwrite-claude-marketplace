@@ -1,6 +1,6 @@
 ---
 name: utopia-patterns
-description: Reference guide for common patterns in the Utopia PHP framework — routing, dependency injection, the Database query layer, and the adapter pattern that runs through every Utopia library. Consult when working on any Appwrite-stack repo that imports utopia-php packages.
+description: Cross-cutting cheat sheet for the idioms that repeat across the Utopia PHP ecosystem — routing, DI, Database queries, adapters, pools, validators, events, SDK codegen. Consult when working on any Appwrite-stack repo that imports utopia-php packages. For deep per-library detail, consult the matching `utopia-<library>-expert` skill instead.
 ---
 
 # Utopia Patterns
@@ -8,6 +8,17 @@ description: Reference guide for common patterns in the Utopia PHP framework —
 Reference for the patterns that repeat across the utopia-php ecosystem.
 This isn't a tutorial — it's a cheat sheet for recognizing the idioms
 when you see them so edits stay consistent.
+
+> **Want deeper detail on a specific library?** This skill is
+> intentionally cross-cutting. For a full reference on any individual
+> `utopia-php/*` library — public API surface, gotchas, and Appwrite
+> leverage opportunities — consult the matching `utopia-<library>-expert`
+> skill (e.g. `utopia-http-expert`, `utopia-database-expert`,
+> `utopia-pools-expert`, `utopia-validators-expert`). There are 50 such
+> expert skills, one per library in the utopia-php org. Use this
+> `utopia-patterns` skill for the big-picture idioms; drop into the
+> per-library experts when you need surface area, signatures, or
+> library-specific footguns.
 
 ## Routing (utopia-php/framework)
 
@@ -186,3 +197,66 @@ When you change an endpoint:
    published build.
 5. The `*` wildcard means you never edit version strings in
    `composer.json` for SDK bumps — just `composer update`.
+
+## Deep-dive map
+
+When you need more than the cross-cutting view above, jump to the
+per-library expert skill. Each one has public API surface, core
+patterns, gotchas the docs don't mention, and "Appwrite leverage
+opportunities" — specific suggestions for extracting more value.
+
+| Section in this skill      | Deep-dive skill                |
+|----------------------------|--------------------------------|
+| Routing                    | `utopia-http-expert`           |
+| DI / `setResource`         | `utopia-di-expert`             |
+| Static hook registries     | `utopia-servers-expert`        |
+| Action/Service/Module      | `utopia-platform-expert`       |
+| Database query layer       | `utopia-database-expert`       |
+| Standalone query DSL       | `utopia-query-expert`          |
+| Mongo wire-protocol client | `utopia-mongo-expert`          |
+| DSN parsing                | `utopia-dsn-expert`            |
+| Pools                      | `utopia-pools-expert`          |
+| Cache                      | `utopia-cache-expert`          |
+| Storage devices            | `utopia-storage-expert`        |
+| Fetch / HTTP client        | `utopia-fetch-expert`          |
+| Validators                 | `utopia-validators-expert`     |
+| Auth hashes/proofs         | `utopia-auth-expert`           |
+| JWT                        | `utopia-jwt-expert`            |
+| Abuse / rate limiting      | `utopia-abuse-expert`          |
+| WAF rule engine            | `utopia-waf-expert`            |
+| CLI tasks                  | `utopia-cli-expert`            |
+| Container orchestration    | `utopia-orchestration-expert`  |
+| Proxy (HTTP/TCP/SMTP)      | `utopia-proxy-expert`          |
+| Logger                     | `utopia-logger-expert`         |
+| Telemetry (OTel metrics)   | `utopia-telemetry-expert`      |
+| Audit log                  | `utopia-audit-expert`          |
+| Distributed tracing        | `utopia-span-expert`           |
+| Messaging (Email/SMS/Push) | `utopia-messaging-expert`      |
+| Queue / workers            | `utopia-queue-expert`          |
+| WebSocket                  | `utopia-websocket-expert`      |
+| Async (Promise + Parallel) | `utopia-async-expert`          |
+| Emails parser/classifier   | `utopia-emails-expert`         |
+| Payments                   | `utopia-pay-expert`            |
+| VCS (GitHub/GitLab/…)      | `utopia-vcs-expert`            |
+| Domains / registrars       | `utopia-domains-expert`        |
+| DNS server toolkit         | `utopia-dns-expert`            |
+| Locale / i18n              | `utopia-locale-expert`         |
+| A/B testing                | `utopia-ab-expert`             |
+| Registry (lazy DI)         | `utopia-registry-expert`       |
+| Project env detector       | `utopia-detector-expert`       |
+| Image manipulation         | `utopia-image-expert`          |
+| AI agents                  | `utopia-agents-expert`         |
+| CLI console helpers        | `utopia-console-expert`        |
+| CloudEvents envelope       | `utopia-cloudevents-expert`    |
+| ClickHouse client          | `utopia-clickhouse-expert`     |
+| Load balancer              | `utopia-balancer-expert`       |
+| Usage metering (STUB)      | `utopia-usage-expert`          |
+| Config DTOs                | `utopia-config-expert`         |
+| Compression                | `utopia-compression-expert`    |
+| Migration engine           | `utopia-migration-expert`      |
+| System metrics             | `utopia-system-expert`         |
+| Preloader                  | `utopia-preloader-expert`      |
+| Analytics fanout           | `utopia-analytics-expert`      |
+
+For Swoole-specific detail (not a utopia-php library, but the runtime
+everything above sits on), consult the `swoole-expert` skill.
