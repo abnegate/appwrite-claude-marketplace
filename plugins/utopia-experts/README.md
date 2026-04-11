@@ -1,6 +1,18 @@
 # utopia-experts
 
-One Claude Code skill per library in the [utopia-php](https://github.com/utopia-php) ecosystem. Each skill is a dense, opinionated reference that Claude consults on demand: public API surface, core patterns, gotchas the docs don't mention, and an "Appwrite leverage opportunities" section with specific suggestions for extracting more value from the library.
+One Claude Code skill per library in the [utopia-php](https://github.com/utopia-php) ecosystem, plus a routing agent that keeps parent-session context clean. Each skill is a dense, opinionated reference: public API surface, core patterns, gotchas the docs don't mention, and an "Appwrite leverage opportunities" section with specific suggestions for extracting more value.
+
+## How this plugin works
+
+There are two ways to reach the knowledge:
+
+1. **Direct load** — if you know exactly which library you need, load the matching `utopia-<library>-expert` skill yourself. Surgical and cheap (~1k tokens per skill).
+
+2. **Routed lookup** — dispatch the `utopia-router` agent (automatically via its description, or manually via `/utopia-lookup <question>`). The router runs in its own Haiku context, reads `skills/INDEX.md`, picks the 1-3 most relevant expert skills, reads them in its own window, and returns a 200-400 word synthesised answer with exact citations. Your parent session only sees the answer, not the full skill bodies.
+
+**When routing wins:** cross-library questions, expensive parent sessions (`cloud`, `edge`, `database` historically run $230-306/session), or when you don't know which skill has the answer. The router does the catalog walk so the parent doesn't have to.
+
+**When direct load wins:** you already know which skill, the task is going to touch that library heavily anyway, or you want the full reference for active editing.
 
 ## What's in it
 
@@ -76,9 +88,25 @@ One Claude Code skill per library in the [utopia-php](https://github.com/utopia-
 - `utopia-balancer-expert` — client-side LB with Random/First/Last/RoundRobin
 - `utopia-usage-expert` — **STUB** — this library has no source on `main`; rebuild in progress
 
+## The router
+
+`agents/utopia-router.md` — lightweight Haiku agent dispatched automatically when a question touches any utopia-php library. It reads `skills/INDEX.md` (an auto-generated catalog of all 50 skills grouped by category, with composition notes for known cross-library pairings), picks 1-3 relevant skills, reads them in its own context, and returns a distilled answer.
+
+Hard rules the router follows:
+- Never loads more than 3 skills per question (if you think you need 4+, re-scope the question)
+- Never loads skills speculatively ("just in case")
+- Never answers from training — if the skill doesn't cover it, says so
+- Read-only: Read/Grep/Glob/Bash(discovery) only, no Edit/Write
+- Redirects Swoole questions to the `swoole-expert` skill in `appwrite-conventions`
+- Returns a 200-400 word answer with exact class/method names and citations to skill sections
+
+`commands/utopia-lookup.md` — explicit `/utopia-lookup <question>` wrapper for when you want to route manually.
+
+`scripts/generate_index.py` — regenerates `skills/INDEX.md` from the 50 SKILL.md frontmatter blocks. Run after adding, removing, or renaming a skill.
+
 ## How each skill is structured
 
-Every skill follows the same shape so Claude can synthesize across them:
+Every skill follows the same shape so Claude (and the router) can synthesize across them:
 
 ```
 ## Purpose          — one-sentence summary
@@ -117,7 +145,7 @@ Via the marketplace at the repo root:
 /plugin install utopia-experts@appwrite-claude-marketplace
 ```
 
-Skills load automatically in any session where Claude detects Appwrite-stack context (composer.json with `utopia-php/*`, directory names matching Appwrite repos, etc.).
+Skills load automatically in any session where Claude detects Appwrite-stack context (composer.json with `utopia-php/*`, directory names matching Appwrite repos, etc.). The router agent dispatches automatically based on its description, or explicitly via `/utopia-lookup`.
 
 ## Research methodology
 
