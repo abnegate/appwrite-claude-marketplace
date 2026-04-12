@@ -30,6 +30,12 @@
       "description": "50 expert-level skill references — one per utopia-php library — loaded as on-demand context for Appwrite-stack work. Each skill captures public API, core patterns, gotchas, and leverage opportunities sourced from deep research across the utopia-php org.",
       "source": "./plugins/utopia-experts",
       "category": "development"
+    },
+    {
+      "name": "appwrite-experts",
+      "description": "10 per-service expert skills covering every Appwrite domain (auth, databases, functions, storage, messaging, teams, realtime, workers, tasks, cloud) plus a routing agent. Patterns, file locations, and gotchas a senior dev needs to be immediately productive.",
+      "source": "./plugins/appwrite-experts",
+      "category": "development"
     }
   ]
 }
