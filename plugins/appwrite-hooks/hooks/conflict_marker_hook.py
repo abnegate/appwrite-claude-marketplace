@@ -31,7 +31,7 @@ from _shared import (
 
 HOOK = 'conflict_marker'
 
-CONFLICT_PATTERN = re.compile(r'^(<{7}|={7}|>{7})\s', re.MULTILINE)
+CONFLICT_PATTERN = re.compile(r'^(<{7}|={7}|>{7})(\s|$)', re.MULTILINE)
 
 # Files where conflict markers are expected content (docs, tests, this hook itself).
 EXEMPT_PATTERNS = (

@@ -17,7 +17,6 @@ All tests run with APPWRITE_HOOKS_NO_METRICS=1 so they don't pollute
 import json
 import os
 import subprocess
-import sys
 import unittest
 from pathlib import Path
 
@@ -68,6 +67,14 @@ class NoVerifyGuardTests(unittest.TestCase):
         )
         self.assertEqual(code, 2)
         self.assertIn('amend', err)
+
+    def test_blocks_env_prefixed_no_verify(self) -> None:
+        code, err = call_hook(
+            self.HOOK,
+            {'command': 'GIT_AUTHOR_NAME="test" git commit --no-verify -m "(feat): foo"'},
+        )
+        self.assertEqual(code, 2)
+        self.assertIn('no-verify', err)
 
     def test_ignores_non_git_bash(self) -> None:
         code, _ = call_hook(self.HOOK, {'command': 'ls -la'})
@@ -210,6 +217,21 @@ class ForcePushGuardTests(unittest.TestCase):
         code, err = call_hook(
             self.HOOK,
             {'command': 'git push --force --set-upstream origin main'},
+        )
+        self.assertEqual(code, 2)
+        self.assertIn('main', err)
+
+    def test_blocks_force_with_lease_equals_form(self) -> None:
+        code, err = call_hook(
+            self.HOOK,
+            {'command': 'git push --force-with-lease=origin/main origin main'},
+        )
+        self.assertEqual(code, 2)
+
+    def test_blocks_combined_short_force_flag(self) -> None:
+        code, err = call_hook(
+            self.HOOK,
+            {'command': 'git push -uf origin main'},
         )
         self.assertEqual(code, 2)
         self.assertIn('main', err)
@@ -361,6 +383,26 @@ class DestructiveGuardTests(unittest.TestCase):
     def test_allows_rm_rf_tmp(self) -> None:
         code, _ = call_hook(self.HOOK, {'command': 'rm -rf /tmp/xyz'})
         self.assertEqual(code, 0)
+
+    def test_blocks_rm_rf_tmpevil(self) -> None:
+        code, _ = call_hook(self.HOOK, {'command': 'rm -rf /tmpevil'})
+        self.assertEqual(code, 2)
+
+    def test_blocks_sudo_rm_rf_slash(self) -> None:
+        code, _ = call_hook(self.HOOK, {'command': 'sudo rm -rf /'})
+        self.assertEqual(code, 2)
+
+    def test_blocks_env_rm_rf_slash(self) -> None:
+        code, _ = call_hook(self.HOOK, {'command': 'env rm -rf /'})
+        self.assertEqual(code, 2)
+
+    def test_blocks_rm_rf_via_pipe(self) -> None:
+        code, _ = call_hook(self.HOOK, {'command': 'echo foo | rm -rf /'})
+        self.assertEqual(code, 2)
+
+    def test_blocks_tmpdir_traversal(self) -> None:
+        code, _ = call_hook(self.HOOK, {'command': 'rm -rf $TMPDIR/../../etc'})
+        self.assertEqual(code, 2)
 
     def test_allows_plain_rm(self) -> None:
         code, _ = call_hook(self.HOOK, {'command': 'rm foo.txt'})

@@ -15,11 +15,12 @@ own branch is normal workflow.
 Escape hatch: `APPWRITE_HOOKS_ALLOW_UNSAFE_PUSH=1` for the one command.
 """
 
+from __future__ import annotations
+
 import os
 import re
 import sys
 from pathlib import Path
-from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).parent))
 from _shared import (
@@ -43,7 +44,7 @@ PROTECTED_BRANCH_PATTERNS = (
 FORCE_FLAGS = ('--force', '-f', '--force-with-lease', '--force-if-includes')
 
 
-def targets_protected_branch(argv: list[str]) -> Optional[str]:
+def targets_protected_branch(argv: list[str]) -> str | None:
     """Inspect the push argv for a protected branch target.
 
     Returns the matched branch name, or None if no protected target found.

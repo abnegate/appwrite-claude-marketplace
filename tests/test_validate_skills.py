@@ -6,7 +6,6 @@ without touching the real plugin tree.
 """
 
 import json
-import os
 import sys
 import tempfile
 import textwrap

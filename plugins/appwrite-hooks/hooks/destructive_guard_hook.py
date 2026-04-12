@@ -33,7 +33,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from _shared import allow, block, read_tool_input, skip
+from _shared import allow, block, read_tool_input, skip, _strip_command_prefix
 
 HOOK = 'destructive_guard'
 
@@ -83,7 +83,7 @@ def main() -> None:
 
     # Check every segment of a chained command separately — `rm -rf foo &&
     # rm -rf bar` is two actions, either of which could be dangerous.
-    segments = re.split(r'&&|\|\||;', command)
+    segments = re.split(r'&&|\|\||;|\|', command)
     for segment in segments:
         reason = _is_dangerous(segment.strip())
         if reason:
@@ -114,6 +114,11 @@ def _is_dangerous(segment: str) -> str:
     except ValueError:
         # Unparseable segment — let it through rather than false-positive.
         return ''
+    if not argv:
+        return ''
+
+    # Strip command wrappers (sudo, env, KEY=VALUE) to find the real tool.
+    argv = _strip_command_prefix(argv)
     if not argv:
         return ''
 
@@ -176,8 +181,9 @@ def _path_danger(target: str) -> str:
 
     # Environment variable references — unsafe unless clearly scratch.
     if '$' in stripped:
-        if any(safe in stripped for safe in ('$TMPDIR', '${TMPDIR}')):
-            return ''
+        if (stripped.startswith('$TMPDIR') or stripped.startswith('${TMPDIR}')):
+            if '/..' not in stripped:
+                return ''
         return f'path contains variable expansion: {target}'
 
     # Tilde — home directory
@@ -194,7 +200,10 @@ def _path_danger(target: str) -> str:
 
     # Absolute path outside safe zones
     if stripped.startswith('/'):
-        if any(stripped.startswith(p.rstrip('/')) for p in SAFE_PATH_PREFIXES if p.startswith('/')):
+        if any(
+            stripped == p.rstrip('/') or stripped.startswith(p)
+            for p in SAFE_PATH_PREFIXES if p.startswith('/')
+        ):
             return ''
         return f'absolute path outside safe zones: {target}'
 

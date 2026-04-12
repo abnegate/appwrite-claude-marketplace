@@ -15,6 +15,8 @@ Every hook that uses this module gets:
     without changing behaviour.
 """
 
+from __future__ import annotations
+
 import json
 import os
 import re
@@ -23,7 +25,6 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 # -- Subprocess helpers for staged-file queries (used by multiple hooks) --
 
@@ -79,7 +80,7 @@ def read_tool_input() -> tuple[str, dict]:
     return payload.get('tool_name', ''), payload.get('tool_input', {}) or {}
 
 
-def extract_git_commit(command: str) -> Optional[list[str]]:
+def extract_git_commit(command: str) -> list[str] | None:
     """If command is (or contains) a `git commit`, return the argv list.
 
     Handles:
@@ -92,7 +93,7 @@ def extract_git_commit(command: str) -> Optional[list[str]]:
     return _extract_git_subcommand(command, 'commit')
 
 
-def extract_git_push(command: str) -> Optional[list[str]]:
+def extract_git_push(command: str) -> list[str] | None:
     """If command is (or contains) a `git push`, return the argv list.
 
     Returns None if the command isn't a git push.
@@ -100,7 +101,10 @@ def extract_git_push(command: str) -> Optional[list[str]]:
     return _extract_git_subcommand(command, 'push')
 
 
-def _extract_git_subcommand(command: str, subcommand: str) -> Optional[list[str]]:
+_COMMAND_PREFIXES = frozenset(('sudo', 'env', 'nice', 'nohup', 'time'))
+
+
+def _extract_git_subcommand(command: str, subcommand: str) -> list[str] | None:
     needle = f'git {subcommand}'
     if needle not in command:
         return None
@@ -115,9 +119,17 @@ def _extract_git_subcommand(command: str, subcommand: str) -> Optional[list[str]
             argv = shlex.split(segment, posix=True)
         except ValueError:
             return _loose_parse_git(segment, subcommand)
+        argv = _strip_command_prefix(argv)
         if len(argv) >= 2 and argv[0] == 'git' and argv[1] == subcommand:
             return argv
     return None
+
+
+def _strip_command_prefix(argv: list[str]) -> list[str]:
+    """Strip leading command wrappers (sudo, env, KEY=VALUE) from argv."""
+    while argv and (argv[0] in _COMMAND_PREFIXES or '=' in argv[0]):
+        argv = argv[1:]
+    return argv
 
 
 def _loose_parse_git(segment: str, subcommand: str) -> list[str]:
@@ -144,7 +156,7 @@ def _loose_parse_git(segment: str, subcommand: str) -> list[str]:
     return argv
 
 
-def extract_commit_message(argv: list[str]) -> Optional[str]:
+def extract_commit_message(argv: list[str]) -> str | None:
     """Pull the -m message out of a parsed git-commit argv."""
     for index, token in enumerate(argv):
         if token == '-m' and index + 1 < len(argv):
@@ -157,9 +169,29 @@ def extract_commit_message(argv: list[str]) -> Optional[str]:
 
 
 def has_flag(argv: list[str], *flags: str) -> bool:
-    """True if any of the given flags appear in argv."""
-    argset = set(argv)
-    return any(flag in argset for flag in flags)
+    """True if any of the given flags appear in argv.
+
+    Handles exact matches, ``--flag=value`` long-flag variants, and combined
+    short flags (e.g. ``-uf`` matching ``-f``).
+    """
+    for arg in argv:
+        for flag in flags:
+            if arg == flag:
+                return True
+            # --force-with-lease=origin/main should match --force-with-lease
+            if flag.startswith('--') and arg.startswith(flag + '='):
+                return True
+            # Combined short flags: -uf contains -f
+            if (
+                len(flag) == 2
+                and flag[0] == '-'
+                and flag[1] != '-'
+                and arg.startswith('-')
+                and not arg.startswith('--')
+                and flag[1] in arg[1:]
+            ):
+                return True
+    return False
 
 
 def log_metric(
@@ -167,7 +199,7 @@ def log_metric(
     tool: str,
     verdict: str,
     reason: str = '',
-    extra: Optional[dict] = None,
+    extra: dict | None = None,
 ) -> None:
     """Append a single JSONL line to the metrics file. Never raises.
 

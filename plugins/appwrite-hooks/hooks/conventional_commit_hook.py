@@ -85,6 +85,7 @@ def main() -> None:
             f'where type is one of: {", ".join(ALLOWED_TYPES)}.',
             reason='empty message',
         )
+        return
 
     if MERGE.match(first_line) or CONVENTIONAL.match(first_line):
         allow(HOOK, tool_name)
