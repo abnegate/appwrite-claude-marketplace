@@ -7,7 +7,7 @@ description: Cloud-specific concerns — multi-region, edge, billing, patches, d
 
 ## Repository
 
-`~/Local/cloud` — extends the base Appwrite CE (`~/Local/appwrite`) via Composer.
+`appwrite/cloud` — extends the base Appwrite CE (`appwrite/appwrite`) via Composer.
 
 Cloud loads CE init first, then layers on top:
 ```php
