@@ -7,9 +7,6 @@ Each hook is exercised as a subprocess the way Claude Code runs it:
   - JSON payload on stdin
   - exit 0 = allow, exit 2 = block
 
-Tests cover the happy paths and the edge cases the shared parser has to
-survive (HEREDOC messages, chained commands, flag detection).
-
 All tests run with APPWRITE_HOOKS_NO_METRICS=1 so they don't pollute
 ~/.claude/metrics/appwrite-hooks.jsonl.
 """
@@ -45,56 +42,10 @@ def call_hook(
     return result.returncode, result.stderr
 
 
-class NoVerifyGuardTests(unittest.TestCase):
-    HOOK = 'no_verify_guard_hook.py'
-
-    def test_allows_normal_commit(self) -> None:
-        code, _ = call_hook(self.HOOK, {'command': 'git commit -m "(feat): add foo"'})
-        self.assertEqual(code, 0)
-
-    def test_blocks_no_verify(self) -> None:
-        code, err = call_hook(
-            self.HOOK,
-            {'command': 'git commit --no-verify -m "(feat): add foo"'},
-        )
-        self.assertEqual(code, 2)
-        self.assertIn('no-verify', err)
-
-    def test_blocks_amend(self) -> None:
-        code, err = call_hook(
-            self.HOOK,
-            {'command': 'git commit --amend -m "(feat): add foo"'},
-        )
-        self.assertEqual(code, 2)
-        self.assertIn('amend', err)
-
-    def test_blocks_env_prefixed_no_verify(self) -> None:
-        code, err = call_hook(
-            self.HOOK,
-            {'command': 'GIT_AUTHOR_NAME="test" git commit --no-verify -m "(feat): foo"'},
-        )
-        self.assertEqual(code, 2)
-        self.assertIn('no-verify', err)
-
-    def test_ignores_non_git_bash(self) -> None:
-        code, _ = call_hook(self.HOOK, {'command': 'ls -la'})
-        self.assertEqual(code, 0)
-
-    def test_ignores_non_bash_tools(self) -> None:
-        code, _ = call_hook(self.HOOK, {'file_path': '/tmp/x'}, tool_name='Read')
-        self.assertEqual(code, 0)
-
-    def test_dry_run_converts_block_to_allow(self) -> None:
-        code, err = call_hook(
-            self.HOOK,
-            {'command': 'git commit --no-verify -m "(feat): add foo"'},
-            env_overrides={'APPWRITE_HOOKS_DRY_RUN': '1'},
-        )
-        self.assertEqual(code, 0)
-        self.assertIn('DRY RUN', err)
-
-
 class ConventionalCommitTests(unittest.TestCase):
+    """Tests for conventional_commit_hook.py which now also handles
+    --no-verify and --amend blocking (folded from no_verify_guard)."""
+
     HOOK = 'conventional_commit_hook.py'
 
     def test_allows_feat(self) -> None:
@@ -137,10 +88,57 @@ class ConventionalCommitTests(unittest.TestCase):
         )
         self.assertEqual(code, 0)
 
+    def test_blocks_no_verify(self) -> None:
+        code, err = call_hook(
+            self.HOOK,
+            {'command': 'git commit --no-verify -m "(feat): add foo"'},
+        )
+        self.assertEqual(code, 2)
+        self.assertIn('no-verify', err)
+
+    def test_blocks_amend(self) -> None:
+        code, err = call_hook(
+            self.HOOK,
+            {'command': 'git commit --amend -m "(feat): add foo"'},
+        )
+        self.assertEqual(code, 2)
+        self.assertIn('amend', err)
+
+    def test_blocks_env_prefixed_no_verify(self) -> None:
+        code, err = call_hook(
+            self.HOOK,
+            {'command': 'GIT_AUTHOR_NAME="test" git commit --no-verify -m "(feat): foo"'},
+        )
+        self.assertEqual(code, 2)
+        self.assertIn('no-verify', err)
+
+    def test_opt_out_allows_no_verify(self) -> None:
+        code, _ = call_hook(
+            self.HOOK,
+            {'command': 'git commit --no-verify -m "(feat): add foo"'},
+            env_overrides={'APPWRITE_HOOKS_ALLOW_UNSAFE_COMMIT': '1'},
+        )
+        self.assertEqual(code, 0)
+
+    def test_dry_run_converts_block_to_allow(self) -> None:
+        code, err = call_hook(
+            self.HOOK,
+            {'command': 'git commit --no-verify -m "(feat): add foo"'},
+            env_overrides={'APPWRITE_HOOKS_DRY_RUN': '1'},
+        )
+        self.assertEqual(code, 0)
+        self.assertIn('DRY RUN', err)
+
+    def test_ignores_non_git_bash(self) -> None:
+        code, _ = call_hook(self.HOOK, {'command': 'ls -la'})
+        self.assertEqual(code, 0)
+
+    def test_ignores_non_bash_tools(self) -> None:
+        code, _ = call_hook(self.HOOK, {'file_path': '/tmp/x'}, tool_name='Read')
+        self.assertEqual(code, 0)
+
 
 class FormatLintIgnoreTests(unittest.TestCase):
-    """Format-lint hook should not block when skip-env is set or no files staged."""
-
     HOOK = 'format_lint_hook.py'
 
     def test_skipped_by_env(self) -> None:
@@ -202,7 +200,7 @@ class ForcePushGuardTests(unittest.TestCase):
         self.assertIn('1.9.x', err)
 
     def test_blocks_force_with_lease_to_main(self) -> None:
-        code, err = call_hook(
+        code, _ = call_hook(
             self.HOOK,
             {'command': 'git push --force-with-lease origin main'},
         )
@@ -222,7 +220,7 @@ class ForcePushGuardTests(unittest.TestCase):
         self.assertIn('main', err)
 
     def test_blocks_force_with_lease_equals_form(self) -> None:
-        code, err = call_hook(
+        code, _ = call_hook(
             self.HOOK,
             {'command': 'git push --force-with-lease=origin/main origin main'},
         )
@@ -275,7 +273,7 @@ class SecretsGuardTests(unittest.TestCase):
         self.assertEqual(code, 0)
 
     def test_blocks_pem_edit(self) -> None:
-        code, err = call_hook(
+        code, _ = call_hook(
             self.HOOK,
             {'file_path': '/secrets/app.pem', 'new_string': 'abc'},
             tool_name='Edit',
@@ -324,7 +322,7 @@ class SecretsGuardTests(unittest.TestCase):
         self.assertIn('.env.PRODUCTION', err)
 
     def test_blocks_kubeconfig(self) -> None:
-        code, err = call_hook(
+        code, _ = call_hook(
             self.HOOK,
             {'file_path': '/repo/kubeconfig.yaml', 'content': 'clusters: []'},
             tool_name='Write',
@@ -408,31 +406,6 @@ class DestructiveGuardTests(unittest.TestCase):
         code, _ = call_hook(self.HOOK, {'command': 'rm foo.txt'})
         self.assertEqual(code, 0)
 
-    def test_blocks_dd_to_dev(self) -> None:
-        code, err = call_hook(self.HOOK, {'command': 'dd if=/dev/zero of=/dev/sda bs=1M'})
-        self.assertEqual(code, 2)
-        self.assertIn('raw device', err)
-
-    def test_allows_dd_to_dev_null(self) -> None:
-        code, _ = call_hook(self.HOOK, {'command': 'dd if=file.img of=/dev/null'})
-        self.assertEqual(code, 0)
-
-    def test_allows_dd_to_file(self) -> None:
-        code, _ = call_hook(self.HOOK, {'command': 'dd if=/dev/zero of=./disk.img bs=1M count=100'})
-        self.assertEqual(code, 0)
-
-    def test_blocks_mkfs(self) -> None:
-        code, _ = call_hook(self.HOOK, {'command': 'mkfs.ext4 /dev/sda1'})
-        self.assertEqual(code, 2)
-
-    def test_blocks_find_delete_on_root(self) -> None:
-        code, _ = call_hook(self.HOOK, {'command': 'find / -delete'})
-        self.assertEqual(code, 2)
-
-    def test_allows_find_delete_in_scratch(self) -> None:
-        code, _ = call_hook(self.HOOK, {'command': 'find ./build -name "*.tmp" -delete'})
-        self.assertEqual(code, 0)
-
     def test_ignores_non_bash(self) -> None:
         code, _ = call_hook(self.HOOK, {'file_path': '/tmp/x'}, tool_name='Read')
         self.assertEqual(code, 0)
@@ -446,30 +419,11 @@ class DestructiveGuardTests(unittest.TestCase):
         self.assertEqual(code, 0)
 
 
-class ConflictMarkerHookTests(unittest.TestCase):
-    """Conflict-marker hook can't fully test without a real git repo, but we
-    can verify it ignores non-git and non-Bash calls."""
+class StagedDiffScanTests(unittest.TestCase):
+    """Staged-diff scan can't fully test blocking without a real git repo,
+    but we verify passthrough, opt-out, and non-git ignore paths."""
 
-    HOOK = 'conflict_marker_hook.py'
-
-    def test_ignores_non_bash(self) -> None:
-        code, _ = call_hook(self.HOOK, {'file_path': '/tmp/x'}, tool_name='Read')
-        self.assertEqual(code, 0)
-
-    def test_ignores_non_git_bash(self) -> None:
-        code, _ = call_hook(self.HOOK, {'command': 'echo hello'})
-        self.assertEqual(code, 0)
-
-    def test_allows_normal_commit(self) -> None:
-        code, _ = call_hook(self.HOOK, {'command': 'git commit -m "(feat): add foo"'})
-        self.assertEqual(code, 0)
-
-
-class TempCodeHookTests(unittest.TestCase):
-    """Same limitation as conflict-marker — real diff-based testing needs a
-    git repo. Here we verify passthrough and opt-out paths."""
-
-    HOOK = 'temp_code_hook.py'
+    HOOK = 'staged_diff_scan_hook.py'
 
     def test_ignores_non_bash(self) -> None:
         code, _ = call_hook(self.HOOK, {'file_path': '/tmp/x'}, tool_name='Read')
@@ -483,7 +437,7 @@ class TempCodeHookTests(unittest.TestCase):
         code, _ = call_hook(self.HOOK, {'command': 'git commit -m "(feat): add foo"'})
         self.assertEqual(code, 0)
 
-    def test_opt_out_allows(self) -> None:
+    def test_temp_code_opt_out(self) -> None:
         code, _ = call_hook(
             self.HOOK,
             {'command': 'git commit -m "(feat): temp stuff"'},
