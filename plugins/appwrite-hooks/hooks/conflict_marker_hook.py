@@ -16,7 +16,6 @@ them differently (e.g. use backtick fences).
 """
 
 import re
-import subprocess
 import sys
 from pathlib import Path
 
@@ -27,6 +26,7 @@ from _shared import (
     extract_git_commit,
     read_tool_input,
     skip,
+    staged_diff,
 )
 
 HOOK = 'conflict_marker'
@@ -41,36 +41,23 @@ EXEMPT_PATTERNS = (
 )
 
 
-def staged_diff(cwd: str) -> str:
-    try:
-        result = subprocess.run(
-            ['git', 'diff', '--cached', '--diff-filter=ACMR', '-U0'],
-            cwd=cwd or None,
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-    except (subprocess.SubprocessError, FileNotFoundError):
-        return ''
-    if result.returncode != 0:
-        return ''
-    return result.stdout
-
-
 def main() -> None:
     tool_name, tool_input = read_tool_input()
     if tool_name != 'Bash':
         skip(HOOK, tool_name)
+        return
 
     command = tool_input.get('command', '')
     argv = extract_git_commit(command)
     if argv is None:
         skip(HOOK, tool_name)
+        return
 
     cwd = tool_input.get('cwd', '')
     diff = staged_diff(cwd)
     if not diff:
         skip(HOOK, tool_name)
+        return
 
     findings: list[str] = []
     current_file = ''

@@ -56,13 +56,15 @@ def targets_protected_branch(argv: list[str]) -> Optional[str]:
       git push origin +main                   # leading + means force
       git push --force origin main
     """
-    for index, token in enumerate(argv[2:], start=2):  # skip 'git push'
+    positional_count = 0
+    for token in argv[2:]:  # skip 'git push'
         if token.startswith('-'):
             continue
         # Positional. First positional is remote; subsequent are refspecs.
         # We care about refspecs, which look like `[+]<local>:<remote>` or
         # just `<remote>` when local == remote.
-        if index == 2:  # remote name
+        positional_count += 1
+        if positional_count == 1:  # remote name
             continue
         refspec = token.lstrip('+')
         remote_ref = refspec.split(':', 1)[-1]
@@ -83,11 +85,13 @@ def main() -> None:
     tool_name, tool_input = read_tool_input()
     if tool_name != 'Bash':
         skip(HOOK, tool_name)
+        return
 
     command = tool_input.get('command', '')
     argv = extract_git_push(command)
     if argv is None:
         skip(HOOK, tool_name)
+        return
 
     if os.environ.get('APPWRITE_HOOKS_ALLOW_UNSAFE_PUSH') == '1':
         allow(HOOK, tool_name, 'opt-out-unsafe-push')
@@ -96,7 +100,7 @@ def main() -> None:
     has_force = has_flag(argv, *FORCE_FLAGS)
     # Detect leading + in any refspec (equivalent to --force)
     for token in argv[2:]:
-        if not token.startswith('-') and ':' in token and '+' in token.split(':', 1)[0]:
+        if not token.startswith('-') and ':' in token and token.split(':', 1)[0].startswith('+'):
             has_force = True
             break
         if not token.startswith('-') and token.startswith('+'):

@@ -61,10 +61,12 @@ def main() -> None:
     tool_name, tool_input = read_tool_input()
     if tool_name != 'Bash':
         skip(HOOK, tool_name)
+        return
 
     argv = extract_git_commit(tool_input.get('command', ''))
     if argv is None:
         skip(HOOK, tool_name)
+        return
 
     message = extract_commit_message(argv)
     if message is None:
@@ -72,6 +74,7 @@ def main() -> None:
         # use, but Claude Code can't drive an editor — let it fail naturally
         # instead of blocking here.
         skip(HOOK, tool_name)
+        return
 
     first_line = message.strip().splitlines()[0] if message.strip() else ''
     if not first_line:

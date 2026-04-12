@@ -206,6 +206,14 @@ class ForcePushGuardTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn('main', err)
 
+    def test_blocks_force_push_flags_before_remote(self) -> None:
+        code, err = call_hook(
+            self.HOOK,
+            {'command': 'git push --force --set-upstream origin main'},
+        )
+        self.assertEqual(code, 2)
+        self.assertIn('main', err)
+
     def test_blocks_force_push_no_target(self) -> None:
         code, err = call_hook(self.HOOK, {'command': 'git push --force'})
         self.assertEqual(code, 2)
@@ -284,6 +292,23 @@ class SecretsGuardTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn('private key', err)
 
+    def test_blocks_env_uppercase_variant(self) -> None:
+        code, err = call_hook(
+            self.HOOK,
+            {'file_path': '/repo/.env.PRODUCTION', 'content': 'DB=x'},
+            tool_name='Write',
+        )
+        self.assertEqual(code, 2)
+        self.assertIn('.env.PRODUCTION', err)
+
+    def test_blocks_kubeconfig(self) -> None:
+        code, err = call_hook(
+            self.HOOK,
+            {'file_path': '/repo/kubeconfig.yaml', 'content': 'clusters: []'},
+            tool_name='Write',
+        )
+        self.assertEqual(code, 2)
+
     def test_allows_normal_code(self) -> None:
         code, _ = call_hook(
             self.HOOK,
@@ -339,6 +364,19 @@ class DestructiveGuardTests(unittest.TestCase):
 
     def test_allows_plain_rm(self) -> None:
         code, _ = call_hook(self.HOOK, {'command': 'rm foo.txt'})
+        self.assertEqual(code, 0)
+
+    def test_blocks_dd_to_dev(self) -> None:
+        code, err = call_hook(self.HOOK, {'command': 'dd if=/dev/zero of=/dev/sda bs=1M'})
+        self.assertEqual(code, 2)
+        self.assertIn('raw device', err)
+
+    def test_allows_dd_to_dev_null(self) -> None:
+        code, _ = call_hook(self.HOOK, {'command': 'dd if=file.img of=/dev/null'})
+        self.assertEqual(code, 0)
+
+    def test_allows_dd_to_file(self) -> None:
+        code, _ = call_hook(self.HOOK, {'command': 'dd if=/dev/zero of=./disk.img bs=1M count=100'})
         self.assertEqual(code, 0)
 
     def test_blocks_mkfs(self) -> None:

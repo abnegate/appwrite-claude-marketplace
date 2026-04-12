@@ -23,7 +23,6 @@ Escape hatch: APPWRITE_HOOKS_ALLOW_TEMP_CODE=1
 
 import os
 import re
-import subprocess
 import sys
 from pathlib import Path
 
@@ -34,6 +33,7 @@ from _shared import (
     extract_git_commit,
     read_tool_input,
     skip,
+    staged_diff,
 )
 
 HOOK = 'temp_code'
@@ -59,31 +59,17 @@ EXEMPT_PATTERNS = (
 )
 
 
-def staged_diff(cwd: str) -> str:
-    try:
-        result = subprocess.run(
-            ['git', 'diff', '--cached', '--diff-filter=ACMR', '-U0'],
-            cwd=cwd or None,
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-    except (subprocess.SubprocessError, FileNotFoundError):
-        return ''
-    if result.returncode != 0:
-        return ''
-    return result.stdout
-
-
 def main() -> None:
     tool_name, tool_input = read_tool_input()
     if tool_name != 'Bash':
         skip(HOOK, tool_name)
+        return
 
     command = tool_input.get('command', '')
     argv = extract_git_commit(command)
     if argv is None:
         skip(HOOK, tool_name)
+        return
 
     if os.environ.get('APPWRITE_HOOKS_ALLOW_TEMP_CODE') == '1':
         allow(HOOK, tool_name, 'opt-out-allow-temp-code')
@@ -93,6 +79,7 @@ def main() -> None:
     diff = staged_diff(cwd)
     if not diff:
         skip(HOOK, tool_name)
+        return
 
     findings: list[str] = []
     current_file = ''

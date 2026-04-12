@@ -99,7 +99,7 @@ CATEGORIES = {
 }
 
 FRONTMATTER = re.compile(r'^---\n(.*?)\n---', re.DOTALL)
-YAML_FIELD = re.compile(r'^(\w+):\s*(.+?)$', re.MULTILINE)
+YAML_FIELD = re.compile(r'^([\w-]+):\s*(.+?)$', re.MULTILINE)
 
 
 def parse_frontmatter(content: str) -> dict[str, str]:
@@ -208,7 +208,7 @@ def main() -> int:
     output.append('')
 
     index_path = skills_dir / 'INDEX.md'
-    index_path.write_text('\n'.join(output))
+    index_path.write_text('\n'.join(output), encoding='utf-8')
     print(f'wrote {index_path} ({len(entries)} skills across {len(by_category)} categories)')
     return 0
 

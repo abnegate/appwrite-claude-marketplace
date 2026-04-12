@@ -27,11 +27,13 @@ def main() -> None:
     tool_name, tool_input = read_tool_input()
     if tool_name != 'Bash':
         skip(HOOK, tool_name)
+        return
 
     command = tool_input.get('command', '')
     argv = extract_git_commit(command)
     if argv is None:
         skip(HOOK, tool_name)
+        return
 
     if os.environ.get('APPWRITE_HOOKS_ALLOW_UNSAFE_COMMIT') == '1':
         allow(HOOK, tool_name, 'opt-out-unsafe-commit')

@@ -35,12 +35,12 @@ HOOK = 'secrets_guard'
 PROTECTED_TOOLS = ('Edit', 'Write', 'MultiEdit')
 
 SECRET_PATH_PATTERNS = (
-    re.compile(r'(^|/)\.env(\.[a-z]+)?$'),
+    re.compile(r'(^|/)\.env(\.[a-zA-Z0-9_-]+)?$'),
     re.compile(r'(^|/)credentials(\.[a-z]+)?$', re.IGNORECASE),
     re.compile(r'(^|/)secrets?(\.[a-z]+)?$', re.IGNORECASE),
     re.compile(r'\.(pem|key|p12|pfx|jks|keystore|asc)$', re.IGNORECASE),
     re.compile(r'(^|/)id_(rsa|ed25519|ecdsa|dsa)$'),
-    re.compile(r'(^|/)?kubeconfig(\..+)?$', re.IGNORECASE),
+    re.compile(r'(^|/)kubeconfig(\..+)?$', re.IGNORECASE),
     re.compile(r'\.token$', re.IGNORECASE),
     re.compile(r'(^|/)\.netrc$'),
     re.compile(r'(^|/)\.pgpass$'),
@@ -102,10 +102,12 @@ def main() -> None:
     tool_name, tool_input = read_tool_input()
     if tool_name not in PROTECTED_TOOLS:
         skip(HOOK, tool_name)
+        return
 
     file_path = tool_input.get('file_path', '') or ''
     if not file_path:
         skip(HOOK, tool_name)
+        return
 
     if os.environ.get('APPWRITE_HOOKS_ALLOW_SECRETS') == '1':
         allow(HOOK, tool_name, 'opt-out-allow-secrets')

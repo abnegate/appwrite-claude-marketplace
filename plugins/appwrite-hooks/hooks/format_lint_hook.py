@@ -24,25 +24,9 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from _shared import allow, block, extract_git_commit, read_tool_input, skip
+from _shared import allow, block, extract_git_commit, read_tool_input, skip, staged_files
 
 HOOK = 'format_lint'
-
-
-def staged_files(cwd: str) -> list[str]:
-    try:
-        result = subprocess.run(
-            ['git', 'diff', '--cached', '--name-only'],
-            cwd=cwd or None,
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-    except (subprocess.SubprocessError, FileNotFoundError):
-        return []
-    if result.returncode != 0:
-        return []
-    return [line.strip() for line in result.stdout.splitlines() if line.strip()]
 
 
 def find_repo_root(start: str) -> Path:
@@ -84,20 +68,25 @@ def run(cmd: list[str], cwd: Path, label: str) -> tuple[bool, str]:
 
 
 def main() -> None:
-    if os.environ.get('APPWRITE_HOOKS_SKIP_LINT') == '1':
-        skip(HOOK, 'Bash')
-
     tool_name, tool_input = read_tool_input()
+
+    if os.environ.get('APPWRITE_HOOKS_SKIP_LINT') == '1':
+        skip(HOOK, tool_name)
+        return
+
     if tool_name != 'Bash':
         skip(HOOK, tool_name)
+        return
 
     argv = extract_git_commit(tool_input.get('command', ''))
     if argv is None:
         skip(HOOK, tool_name)
+        return
 
     files = staged_files(tool_input.get('cwd', ''))
     if not files:
         skip(HOOK, tool_name)
+        return
 
     repo_root = find_repo_root(tool_input.get('cwd', ''))
     results: list[tuple[bool, str]] = []

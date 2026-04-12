@@ -12,7 +12,6 @@ Escape hatch: `APPWRITE_HOOKS_ALLOW_FIX_WITHOUT_TEST=1` overrides.
 
 import os
 import re
-import subprocess
 import sys
 from pathlib import Path
 
@@ -24,6 +23,7 @@ from _shared import (
     extract_git_commit,
     read_tool_input,
     skip,
+    staged_files,
 )
 
 HOOK = 'regression_test'
@@ -45,38 +45,26 @@ def is_test_path(path: str) -> bool:
     return any(pattern.search(path) for pattern in TEST_PATH_PATTERNS)
 
 
-def staged_files(cwd: str) -> list[str]:
-    try:
-        result = subprocess.run(
-            ['git', 'diff', '--cached', '--name-only'],
-            cwd=cwd or None,
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-    except (subprocess.SubprocessError, FileNotFoundError):
-        return []
-    if result.returncode != 0:
-        return []
-    return [line.strip() for line in result.stdout.splitlines() if line.strip()]
-
-
 def main() -> None:
     tool_name, tool_input = read_tool_input()
     if tool_name != 'Bash':
         skip(HOOK, tool_name)
+        return
 
     argv = extract_git_commit(tool_input.get('command', ''))
     if argv is None:
         skip(HOOK, tool_name)
+        return
 
     message = extract_commit_message(argv)
     if not message:
         skip(HOOK, tool_name)
+        return
 
     first_line = message.strip().splitlines()[0] if message.strip() else ''
     if not FIX_PREFIX.match(first_line):
         skip(HOOK, tool_name)
+        return
 
     if os.environ.get('APPWRITE_HOOKS_ALLOW_FIX_WITHOUT_TEST') == '1':
         allow(HOOK, tool_name, 'opt-out-allow-fix-without-test')
@@ -87,6 +75,7 @@ def main() -> None:
     if not files:
         # Nothing staged — git will reject the commit on its own.
         skip(HOOK, tool_name)
+        return
 
     if any(is_test_path(f) for f in files):
         allow(HOOK, tool_name, 'test file staged')

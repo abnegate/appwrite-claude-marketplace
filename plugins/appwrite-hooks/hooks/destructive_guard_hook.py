@@ -70,10 +70,12 @@ def main() -> None:
     tool_name, tool_input = read_tool_input()
     if tool_name != 'Bash':
         skip(HOOK, tool_name)
+        return
 
     command = (tool_input.get('command') or '').strip()
     if not command:
         skip(HOOK, tool_name)
+        return
 
     if os.environ.get('APPWRITE_HOOKS_ALLOW_DESTRUCTIVE') == '1':
         allow(HOOK, tool_name, 'opt-out-allow-destructive')
@@ -137,10 +139,10 @@ def _is_dangerous(segment: str) -> str:
                 return reason
         return ''
 
-    # dd of=/dev/... — disk overwrite
+    # dd of=/dev/... — disk overwrite (exempt /dev/null)
     if tool == 'dd':
         for arg in argv[1:]:
-            if arg.startswith('of=') and (arg.startswith('of=/dev/') or arg == 'of=/dev/null') is False and arg.startswith('of=/dev/'):
+            if arg.startswith('of=/dev/') and arg != 'of=/dev/null':
                 return f'dd writing to raw device: {arg}'
 
     # mkfs.*
@@ -153,7 +155,7 @@ def _is_dangerous(segment: str) -> str:
         has_delete = '-delete' in argv
         if has_delete and targets:
             for target in targets:
-                if target in ('/', '/*') or target.startswith('/') and len(Path(target).parts) <= 2:
+                if target in ('/', '/*') or (target.startswith('/') and len(Path(target).parts) <= 2):
                     return f'find -delete on system path: {target}'
 
     # chmod -R 000 or -R 777 on absolute paths
@@ -198,7 +200,10 @@ def _path_danger(target: str) -> str:
 
     # Relative path — check safe prefixes/suffixes
     normalized = stripped.lstrip('./')
-    if any(normalized.startswith(p.lstrip('./')) for p in SAFE_PATH_PREFIXES):
+    if any(
+        normalized == p.lstrip('./') or normalized.startswith(p.lstrip('./') + '/')
+        for p in SAFE_PATH_PREFIXES
+    ):
         return ''
     if any(normalized.endswith(s) for s in SAFE_PATH_SUFFIXES):
         return ''

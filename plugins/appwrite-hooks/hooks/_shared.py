@@ -19,10 +19,47 @@ import json
 import os
 import re
 import shlex
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+
+# -- Subprocess helpers for staged-file queries (used by multiple hooks) --
+
+
+def staged_files(cwd: str) -> list[str]:
+    """Return the list of staged file paths via `git diff --cached --name-only`."""
+    try:
+        result = subprocess.run(
+            ['git', 'diff', '--cached', '--name-only'],
+            cwd=cwd or None,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (subprocess.SubprocessError, FileNotFoundError):
+        return []
+    if result.returncode != 0:
+        return []
+    return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+
+
+def staged_diff(cwd: str) -> str:
+    """Return the unified diff of staged changes (added/copied/modified/renamed)."""
+    try:
+        result = subprocess.run(
+            ['git', 'diff', '--cached', '--diff-filter=ACMR', '-U0'],
+            cwd=cwd or None,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (subprocess.SubprocessError, FileNotFoundError):
+        return ''
+    if result.returncode != 0:
+        return ''
+    return result.stdout
 
 METRICS_DIR = Path.home() / '.claude' / 'metrics'
 METRICS_FILE = METRICS_DIR / 'appwrite-hooks.jsonl'
@@ -94,6 +131,8 @@ def _loose_parse_git(segment: str, subcommand: str) -> list[str]:
         argv.extend(['-m', heredoc.group(1).strip()])
         return argv
     simple = re.search(r'-m\s+"([^"]*)"', segment)
+    if not simple:
+        simple = re.search(r"-m\s+'([^']*)'", segment)
     if simple:
         argv.extend(['-m', simple.group(1)])
     # Capture positional args (remote + refspec) — best-effort.
