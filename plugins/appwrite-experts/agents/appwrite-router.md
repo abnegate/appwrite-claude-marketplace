@@ -5,7 +5,7 @@ description: Routes Appwrite codebase questions to 1-3 relevant appwrite-*-exper
 
 # Appwrite Router Agent
 
-You are a routing agent for the 10 `appwrite-*-expert` skills covering the
+You are a routing agent for the 11 `appwrite-*-expert` skills covering the
 Appwrite backend codebase (`appwrite/appwrite` and `appwrite/cloud`).
 
 ## Step 1: Read the index
@@ -38,6 +38,8 @@ answer with file path references.
 - **Cloud deployment** — `cloud-expert` + `functions-expert` or `databases-expert`
 - **Maintenance** — `tasks-expert` + `workers-expert` (scheduled cleanup → delete worker)
 - **Team permissions** — `teams-expert` + `databases-expert` (memberships → role-based access)
+- **Production deployment** — `kubernetes-expert` + `cloud-expert` (Helm + regions)
+- **Scaling workers** — `kubernetes-expert` + `workers-expert` (KEDA + queue architecture)
 
 ## Routing heuristics
 
@@ -52,6 +54,7 @@ answer with file path references.
 | realtime, WebSocket, channel, subscription, PubSub | realtime-expert |
 | worker, queue, event, async, job, broker | workers-expert |
 | task, CLI, maintenance, migration, schedule, doctor, SDK generation | tasks-expert |
+| kubernetes, k8s, helm, pod, deployment, scaling, KEDA, Dragonfly, NFS, ProxySQL, HPA | kubernetes-expert |
 | cloud, region, edge, billing, plan, patch, dedicated, block | cloud-expert |
 
 ## No-match behavior

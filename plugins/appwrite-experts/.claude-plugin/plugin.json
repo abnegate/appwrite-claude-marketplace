@@ -1,7 +1,7 @@
 {
   "name": "appwrite-experts",
   "version": "0.1.0",
-  "description": "10 per-service expert skills covering every Appwrite domain (auth, databases, functions, storage, messaging, teams, realtime, workers, tasks, cloud) plus a routing agent. Each skill encodes the patterns, file locations, and gotchas a senior dev needs to be immediately productive.",
+  "description": "11 per-service expert skills covering every Appwrite domain (auth, databases, functions, storage, messaging, teams, realtime, workers, tasks, kubernetes, cloud) plus a routing agent. Each skill encodes the patterns, file locations, and gotchas a senior dev needs to be immediately productive.",
   "author": {
     "name": "Jake Barnby"
   }

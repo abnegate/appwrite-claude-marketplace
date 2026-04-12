@@ -1,6 +1,6 @@
 # Appwrite Experts — Skill Index
 
-10 per-service expert skills covering the Appwrite backend codebase.
+11 per-service expert skills covering the Appwrite backend codebase.
 The `appwrite-router` agent reads this file to pick 1-3 relevant skills.
 
 ## Product services
@@ -21,6 +21,7 @@ The `appwrite-router` agent reads this file to pick 1-3 relevant skills.
 | `appwrite-realtime-expert` | Realtime subscriptions, channels, event publishing, WebSocket server, PubSub (not queued). |
 | `appwrite-workers-expert` | Worker architecture, queue system (Redis/AMQP), event publishing, error handling, 14 base workers. Cross-cutting async layer. |
 | `appwrite-tasks-expert` | CLI task system — maintenance, migrations, scheduling (ScheduleBase), health checks, SDK generation. 19 base tasks. |
+| `appwrite-kubernetes-expert` | Helm charts, pod topology, KEDA autoscaling, Dragonfly cache/queue clusters, NFS storage, ProxySQL sharding, production resource profiles. |
 | `appwrite-cloud-expert` | Cloud-specific: multi-region, edge (Fastly), billing/plans, patches, dedicated databases, resource blocking. 18 cloud workers + 58 cloud tasks. |
 
 ## Composition notes for the router
@@ -35,5 +36,7 @@ Some questions span multiple skills. Known pairings:
 - **Cloud deployment** — `appwrite-cloud-expert` + service-specific expert
 - **Maintenance pipeline** — `appwrite-tasks-expert` + `appwrite-workers-expert`
 - **Team permissions** — `appwrite-teams-expert` + `appwrite-databases-expert`
+- **Production deployment** — `appwrite-kubernetes-expert` + `appwrite-cloud-expert`
+- **Scaling workers** — `appwrite-kubernetes-expert` + `appwrite-workers-expert`
 
 When a question matches a pairing, load all relevant skills rather than picking just one.
