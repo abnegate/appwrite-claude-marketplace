@@ -2,7 +2,7 @@
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "appwrite-claude-marketplace",
   "version": "0.1.0",
-  "description": "Claude Code skills, hooks, and conventions tuned for Appwrite/Utopia/Swoole workflows. Enforces conventional commits and regression-test discipline, catches Swoole pool/coroutine bugs, accelerates multi-repo work with parallel subagent fanout, and compresses Utopia framework context into every session.",
+  "description": "AI coding-agent skills, hooks, and conventions tuned for Appwrite/Utopia/Swoole workflows. Supports Claude Code and OpenAI Codex CLI (AGENTS.md symlinks to CLAUDE.md). Enforces conventional commits and regression-test discipline, catches Swoole pool/coroutine bugs, accelerates multi-repo work with parallel subagent fanout, and compresses Utopia framework context into every session.",
   "owner": {
     "name": "Jake Barnby"
   },

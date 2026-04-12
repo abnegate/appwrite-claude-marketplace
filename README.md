@@ -1,16 +1,35 @@
 # appwrite-claude-marketplace
 
-Claude Code plugin marketplace tuned for the Appwrite / Utopia / Swoole
-development workflow. Three plugins, each addressing a specific source
-of friction in day-to-day work on the Appwrite stack.
+AI coding-agent plugin marketplace tuned for the Appwrite / Utopia / Swoole
+development workflow. Works with **Claude Code** and **OpenAI Codex CLI**.
+Four plugins, each addressing a specific source of friction in day-to-day
+work on the Appwrite stack.
 
 ## Install
+
+### Claude Code
 
 ```
 /plugin marketplace add abnegate/appwrite-claude-marketplace
 /plugin install appwrite-hooks@appwrite-claude-marketplace
 /plugin install appwrite-skills@appwrite-claude-marketplace
 /plugin install appwrite-conventions@appwrite-claude-marketplace
+/plugin install utopia-experts@appwrite-claude-marketplace
+```
+
+### OpenAI Codex CLI
+
+Copy the plugin directories into your project. Codex reads `AGENTS.md`
+(symlinked to `CLAUDE.md` — same file, zero duplication) and `SKILL.md`
+files natively:
+
+```bash
+# Conventions (recommended — gives Codex the Appwrite framework priors)
+cp plugins/appwrite-conventions/AGENTS.md your-project/AGENTS.md
+
+# Skills (reference content — copy the skills you need)
+cp -r plugins/utopia-experts/skills your-project/.codex/skills
+cp -r plugins/appwrite-conventions/skills your-project/.codex/skills
 ```
 
 Pick the plugins you want — they're independent and can be installed
@@ -61,11 +80,12 @@ Three slash commands and a CLAUDE.md fragment with three workflow rules.
 
 ### `appwrite-conventions` — framework context compression
 
-Auto-loaded CLAUDE.md encoding the stable framework priors (Utopia,
+Auto-loaded context encoding the stable framework priors (Utopia,
 Swoole 6, namespace layout, composer constraints, code style, REST
-conventions, test discipline, branch strategy). Plus a
-`utopia-patterns` reference skill for the common routing / DI /
-database / pool / validator idioms.
+conventions, test discipline, branch strategy). `CLAUDE.md` is the
+single source of truth; `AGENTS.md` is a symlink to it so Codex reads
+the same file. Plus a `utopia-patterns` reference skill for the common
+routing / DI / database / pool / validator idioms.
 
 The point: every Appwrite-stack session starts with the right priors
 instead of re-deriving "is this Laravel?" and "what's the namespace
@@ -77,6 +97,8 @@ convention?" from scratch.
 appwrite-claude-marketplace/
 ├── .claude-plugin/
 │   └── marketplace.json         # marketplace manifest
+├── scripts/
+│   └── validate_skills.py       # CI: frontmatter + manifest validation
 ├── plugins/
 │   ├── appwrite-hooks/
 │   │   ├── .claude-plugin/plugin.json
@@ -95,15 +117,27 @@ appwrite-claude-marketplace/
 │   │   │   ├── fanout.md
 │   │   │   ├── swoole-audit.md
 │   │   │   └── merge-conflict.md
-│   │   ├── CLAUDE.md             # workflow rules
+│   │   ├── CLAUDE.md             # source of truth
+│   │   ├── AGENTS.md → CLAUDE.md # symlink (Codex)
 │   │   └── README.md
-│   └── appwrite-conventions/
+│   ├── appwrite-conventions/
+│   │   ├── .claude-plugin/plugin.json
+│   │   ├── CLAUDE.md             # source of truth
+│   │   ├── AGENTS.md → CLAUDE.md # symlink (Codex)
+│   │   ├── skills/
+│   │   │   └── utopia-patterns/
+│   │   │       └── SKILL.md
+│   │   └── README.md
+│   └── utopia-experts/
 │       ├── .claude-plugin/plugin.json
-│       ├── CLAUDE.md             # framework priors
-│       ├── skills/
-│       │   └── utopia-patterns/
+│       ├── skills/               # 50 expert SKILL.md files
+│       │   ├── INDEX.md          # auto-generated catalogue
+│       │   └── utopia-*-expert/
 │       │       └── SKILL.md
-│       └── README.md
+│       ├── agents/
+│       │   └── utopia-router.md
+│       └── scripts/
+│           └── generate_index.py
 └── README.md
 ```
 
@@ -114,8 +148,16 @@ Hooks:
 cd plugins/appwrite-hooks/hooks && python3 test_hooks.py
 ```
 
-Skills / commands / CLAUDE.md fragments are plain Markdown — no build
-step.
+Validate all skills, commands, and manifests:
+```bash
+python3 scripts/validate_skills.py
+```
+
+## Multi-tool support
+
+`CLAUDE.md` is the single source of truth for project instructions.
+`AGENTS.md` is a symlink to it, so Codex reads the exact same file.
+No generation step, no hooks, no sync — one file, two names.
 
 ## License
 

@@ -2,12 +2,14 @@
 
 How the four plugins in this marketplace work together. The short
 version: install all four for the full workflow, or mix and match
-by layer.
+by layer. All convention content supports both **Claude Code**
+(via `CLAUDE.md`) and **OpenAI Codex CLI** (via `AGENTS.md` —
+symlinked to the same file).
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                       appwrite-conventions                     │
-│  CLAUDE.md priors · utopia-patterns · swoole-expert (reference) │
+│  CLAUDE.md (+ AGENTS.md symlink) · utopia-patterns · swoole    │
 └───────────────────────────────┬─────────────────────────────────┘
                                 │  auto-loaded context
                                 ▼
@@ -41,9 +43,10 @@ together).
 **What it is.** Static, auto-loaded context that every Appwrite-stack
 session should start with. Utopia framework conventions, composer
 rules, namespace layout, code style, testing discipline, Swoole
-runtime model. Plus two reference skills (`utopia-patterns`, the
-cross-cutting cheat sheet; `swoole-expert`, the 1,641-line Swoole
-reference).
+runtime model. `CLAUDE.md` is the source of truth; `AGENTS.md` is a
+symlink to it so Codex reads the same file. Plus two reference skills
+(`utopia-patterns`, the cross-cutting cheat sheet; `swoole-expert`,
+the 1,641-line Swoole reference).
 
 **When to install.** Always. This is the foundation every other
 plugin assumes.
@@ -70,8 +73,8 @@ points at as the "big picture" fallback.
 **What it is.** Slash commands for the work patterns that pay off:
 parallel research fanout, Swoole static analysis, merge-conflict
 resolution, and discovery. Plus three workflow rules in CLAUDE.md
-(Opus-for-edits/Haiku-for-research, multi-repo tasks start in
-plan mode, Edit over Write).
+(Opus-for-edits/Haiku-for-research, multi-repo tasks start in plan
+mode, Edit over Write). `AGENTS.md` symlinks to the same file.
 
 **When to install.** When you want the commands. Skip if you only
 want discipline (hooks) or reference (conventions + experts).
