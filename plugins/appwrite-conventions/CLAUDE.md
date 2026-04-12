@@ -528,17 +528,19 @@ code.
 
 ### Cache invalidation gaps (20+ instances)
 
-Write-then-purge ordering where the cache is purged before the write
-persists, creating a stale-data window. Missing purge propagation
-where a write goes through one path but the purge only exists on
-another.
+High-level methods like `updateDocument` / `updateCollection` already
+clear cache internally. The real bugs live in the `utopia-php/database`
+library itself — adapter-level methods that bypass the cache layer,
+race conditions in the cache-aside logic, and stale-data windows when
+purge ordering is wrong (cache purged before the write persists).
 
-**Rule:** every `updateDocument` / `updateCollection` must have a
-corresponding cache purge, co-located in the same method or
-automated by the adapter. Prefer write-through caching (write to
-DB + cache atomically) over write-then-purge. Test cache correctness
-with a second connection: write, read from connection B, verify fresh
-data.
+**Rule:** when debugging stale data, look at the database library
+methods first, not the application-level calls. Prefer write-through
+caching (write to DB + cache atomically) over write-then-purge. Test
+cache correctness with a second connection: write, read from
+connection B, verify fresh data. When adding a new adapter method
+or query path in `utopia-php/database`, verify it participates in
+the cache layer — missing participation is the most common cause.
 
 ### SDK / API contract drift (50+ instances)
 
@@ -548,11 +550,14 @@ lags behind. The SDK generator itself has bugs (e.g. `Any` type
 mapping, consecutive uppercase handling) that cascade across all
 11 SDKs.
 
-**Rule:** when changing an API endpoint, also update the `sdk.method`
-/ `sdk.namespace` / `sdk.response.model` labels and run spec
-generation. Check whether the generated spec compiles against the
-console's TypeScript types. If the SDK generator needs a fix, fix it
-first and publish before updating the consuming repos.
+**Rule:** routes define their SDK contract via a single `->label('sdk',
+new Method(...))` call with named parameters (`namespace`, `group`,
+`name`, `description`, `auth`, `responses`, `contentType`,
+`deprecated`, etc.). When changing an API endpoint, update the
+`Method` object on the route and run spec generation. Check whether
+the generated spec compiles against the console's TypeScript types.
+If the SDK generator needs a fix, fix it first and publish before
+updating the consuming repos.
 
 ### Worker / event payload mutation (15+ instances)
 
@@ -572,9 +577,27 @@ Enum values renamed, platform types restructured, API defaults changed
 — but existing data in production databases still has the old values.
 New code paths assume all data is in the new format.
 
-**Rule:** never remove an enum value without a data migration. Always
-add a mapping function from old to new values and test it with both
-old and new data in the same test. When changing a default value,
+**Rule:** Appwrite has three distinct backwards-compatibility systems;
+use the right one for the change:
+
+1. **Request/response filters** (`src/Appwrite/Utopia/Request/Filters/`
+   and `src/Appwrite/Utopia/Response/Filters/`, versioned V16-V21) —
+   stateless per-request transformations applied based on the client's
+   `x-appwrite-response-format` header. Use these when an API shape
+   changes but the underlying data doesn't. Request filters convert
+   old param names to new; response filters convert back.
+2. **Server migration files** (`src/Appwrite/Migration/Version/`,
+   V15-V24) — one-time schema and data transformations that run during
+   server version upgrades. Use these for structural changes to
+   internal collections, new attributes, or data format migrations.
+3. **Cloud patches** (`src/Appwrite/Cloud/Patches/`, e.g.
+   `PatchAddition`, `PatchDeletion`, `PatchModification`) — per-project
+   database patches in the cloud repo with apply/validate/rollback
+   lifecycle. Use these for cloud-specific schema changes that need
+   tenant-aware rollout.
+
+Never remove an enum value without a migration or filter. Always test
+with both old and new data in the same test. When changing a default,
 check if existing documents will silently change behaviour.
 
 ### TEMP code shipped (25+ instances)
