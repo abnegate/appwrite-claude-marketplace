@@ -33,6 +33,8 @@ jobs:
       REPOS_OVERRIDE: ${{ github.event.inputs.repos_override }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          token: ${{ secrets.CLAUDE_PUSH_TOKEN }}
 
       - name: Set up PHP
         uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f # v2.37.0
@@ -237,7 +239,7 @@ jobs:
           ACTIVE_REPOS: ${{ steps.collect.outputs.active }}
           TOTAL_COMMITS: ${{ steps.collect.outputs.total }}
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.CLAUDE_PUSH_TOKEN }}
           branch: bot/scan-commits
           base: main
           commit-message: 'feat: propose marketplace updates from upstream commits'

@@ -22,6 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          token: ${{ secrets.CLAUDE_PUSH_TOKEN }}
 
       - name: Set up PHP
         uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f # v2.37.0
@@ -106,10 +108,11 @@ jobs:
         run: rm -f drift.json drift.txt
 
       - name: Open pull request
+        id: pr
         if: steps.drift.outputs.has_drift == 'true'
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.CLAUDE_PUSH_TOKEN }}
           branch: bot/sync-libraries
           base: main
           commit-message: 'chore: sync skill catalogue with upstream orgs'
@@ -132,3 +135,10 @@ jobs:
             automation
             sync-libraries
           delete-branch: true
+
+      - name: Enable auto-merge once CI is green
+        if: steps.pr.outputs.pull-request-number
+        env:
+          GH_TOKEN: ${{ secrets.CLAUDE_PUSH_TOKEN }}
+          PR_NUMBER: ${{ steps.pr.outputs.pull-request-number }}
+        run: gh pr merge --auto --squash --delete-branch "$PR_NUMBER"
