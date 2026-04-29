@@ -32,7 +32,7 @@ final class GeneratorTest extends TestCase
             $this->markTestSkipped('INDEX.md not found');
         }
         $report = (new Generator(self::REPO_ROOT))->run();
-        $this->assertSame(50, $report->skillCount);
+        $this->assertSame(55, $report->skillCount);
         $this->assertGreaterThanOrEqual(10, $report->categoryCount);
         $this->assertStringEndsWith('INDEX.md', $report->indexPath);
     }
