@@ -29,7 +29,7 @@ read this index, pick the most relevant skills, and return a synthesised answer.
 | `utopia-dsn-expert` | Expert reference for utopia-php/dsn — dependency-free DSN parser wrapping parse_url with required-field validation and lazy query-param parsing. Consult when adding connection-string handling or hunting credential-leak-via-logging bugs. |
 | `utopia-mongo-expert` | Expert reference for utopia-php/mongo — the Swoole-native wire-protocol MongoDB client. Consult when debugging Mongo adapter issues, sizing pools, implementing replica-set failover, or hunting coroutine-blocking patterns. |
 | `utopia-pools-expert` | Expert reference for utopia-php/pools — generic Pool<TResource> with reclaim, retry/reconnect, OpenTelemetry gauges, and Swoole Channel backend. Consult for sizing heuristics, leak hunting, and the Group::use() scoped borrow idiom. |
-| `utopia-query-expert` | Expert reference for utopia-php/query — the standalone, backend-agnostic, serializable query DSL extracted from utopia-php/database. Consult when unifying SDK/REST/adapter query shapes or sharing queries across services. |
+| `utopia-query-expert` | Expert reference for utopia-php/query — the standalone query toolkit shared by every Appwrite-stack service. Ships the serializable `Query` value object, a fluent dialect-aware Builder (MySQL/MariaDB/PostgreSQL/SQLite/ClickHouse/MongoDB) emitting parameterised `Statement`s, a Schema/Table DDL builder, and wire-protocol parsers. Consult when unifying SDK/REST/adapter query shapes, generating SQL across dialects, designing portable DDL, or migrating off the legacy Database\Query. |
 
 ## Storage & I/O
 

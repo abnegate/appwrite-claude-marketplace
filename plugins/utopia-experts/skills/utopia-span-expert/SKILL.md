@@ -9,7 +9,9 @@ description: Expert reference for utopia-php/span — minimal Swoole-coroutine-s
 Minimal, Swoole-coroutine-safe span tracer: create a span, attach scalar attributes, finish, export; supports W3C traceparent propagation and pluggable exporters with per-exporter sampling.
 
 ## Public API
-- `Utopia\Span\Span` — static facade + instance (`init`, `current`, `add`, `error`, `traceparent`, `setStorage`, `addExporter`, `resetExporters`, `set`, `get`, `setError`, `finish`)
+- `Utopia\Span\Span` — static facade + instance:
+  - statics: `setStorage`, `addExporter`, `resetExporters`, `resetStorage`, `reset`, `init`, `current`, `add`, `traceparent`
+  - instance: `set`, `get`, `getAttributes`, `getAction`, `setError`, `getError`, `getTraceparent`, `finish(?string $level = null, ?Throwable $error = null)`
 - `Utopia\Span\Storage\Storage` — storage interface
 - `Utopia\Span\Storage\{Memory, Coroutine, Auto}` — per-runtime context containers
 - `Utopia\Span\Exporter\Exporter` — single-method interface (`export(Span $span)`)
@@ -18,6 +20,7 @@ Minimal, Swoole-coroutine-safe span tracer: create a span, attach scalar attribu
 ## Core patterns
 - **Single flat attribute map, scalars only** — no nested span tree, one span per operation, IDs make the trace
 - **`Storage\Auto`** picks `Coroutine` when Swoole is loaded, `Memory` otherwise — coroutine-safe by default (`Swoole\Coroutine::getContext()`), no manual plumbing
+- **Errors funnel through `finish()`** — pass the throwable as the second argument (`$span->finish(level: null, error: $e)`) and finish populates `$this->error` plus the exporter-visible `level` (`'error'` if an error is present, otherwise the explicit `$level` argument or `'info'`). `setError()` is still available for the rare flow where you stamp the error before reaching the finish call site
 - **Per-exporter sampler closure** evaluated on `finish()` — errors, slow spans, or enterprise customers can be sampled independently per sink (e.g. Sentry only on errors, Stdout always)
 - **W3C Traceparent parsed strictly** (`00-<32 hex>-<16 hex>-<2 hex>`) — valid header sets `trace_id` and `parent_id` automatically
 - **Built-in attributes**: `span.trace_id` / `span.id` / `span.started_at` / `span.finished_at` / `span.duration` stamped by the constructor and `finish()`
@@ -48,14 +51,16 @@ Span::addExporter(
 $span = Span::init('http.request', $request->getHeader('traceparent'));
 $span->set('http.method', $request->getMethod());
 $span->set('http.route', $route->getPath());
+$error = null;
 try {
     $response = $app->run();
     $span->set('http.status', $response->getStatusCode());
 } catch (Throwable $e) {
-    $span->setError($e);
+    $error = $e;
     throw $e;
 } finally {
-    $span->finish();
+    // finish(level, error): pass the throwable here so the exporter sees level=error
+    $span->finish(error: $error);
 }
 ```
 

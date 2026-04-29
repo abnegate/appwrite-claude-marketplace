@@ -10,7 +10,7 @@ Adapter-based CRUD/query abstraction over SQL (MariaDB/MySQL/Postgres/SQLite) an
 
 ## Public API
 - `Utopia\Database\Database` — main facade. `createDocument`, `find`, `findOne`, `getDocument`, `updateDocument`, `updateDocuments`, `increaseDocumentAttribute`, `createIndex`, `withTransaction`, `purgeCachedDocument`, `setDocumentType`, `createRelationship`
-- `Utopia\Database\Adapter` — abstract base; `MariaDB`, `MySQL`, `Postgres`, `SQLite`, `Mongo`, `SQL`, `Pool` concretions live in `src/Database/Adapter/`
+- `Utopia\Database\Adapter` — abstract base; `MariaDB`, `MySQL`, `Postgres`, `SQLite`, `Mongo`, `Memory`, `SQL`, `Pool` concretions live in `src/Database/Adapter/`. `Memory` is an in-process drop-in covering schemas/collections/attributes/indexes (incl. unique + fulltext + PCRE regex), CRUD, transactions, permissions, tenancy/shared-tables, object/nested attributes, schemaless mode, and relationships — intended for tests and ephemeral workloads (spatial types and vector search throw `DatabaseException`)
 - `Utopia\Database\Document` — typed wrapper around `array<string,mixed>`; `$id/$createdAt/$updatedAt/$permissions/$collection` reserved
 - `Utopia\Database\Query` — filter/order/pagination DSL; 40+ `TYPE_*` constants including spatial (`distanceLessThan`, `intersects`) and vector (`vectorCosine`, `vectorDot`, `vectorEuclidean`)
 - `Utopia\Database\Mirror` — dual-write wrapper; writes to source + optional destination with filters + error callbacks (zero-downtime migrations)

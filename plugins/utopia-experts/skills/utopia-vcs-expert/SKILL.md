@@ -11,11 +11,12 @@ Webhook-driven Git provider abstraction for creating repositories, branches, PRs
 ## Public API
 - `Utopia\VCS\Adapter` — root abstract
 - `Utopia\VCS\Adapter\Git` — Git-specific abstract
-- **5 Git adapters**: `Adapter\Git\GitHub`, `GitLab`, `Gitea`, `Gogs`, `Forgejo` (the README's "only GitHub" table is stale — the source tree ships all 5)
-- Key methods: `initializeVariables()`, `createRepository()`, `createBranch()`, `createFile()`, `createPullRequest()`, `createWebhook()`, `createTag()`, `getCommitStatus()`, plus repo/tree/content reads
+- **5 Git adapters**: `Adapter\Git\GitHub`, `GitLab`, `Gitea`, `Gogs`, `Forgejo` (the README's "only GitHub" table is stale — the source tree ships all 5). **GitHub and GitLab are at parity** for the full surface (repos, branches, content, files, trees, languages, PRs, comments, webhooks, branch listings, latest/named commit, commit status); Gitea/Gogs/Forgejo share their own implementation lineage
+- Key methods: `initializeVariables()`, `createRepository()`, `createBranch()`, `createFile()`, `createPullRequest()`, `createWebhook()`, `createComment()`/`updateComment()`, `getPullRequest()`, `getPullRequestFiles()`, `getPullRequestFromBranch()`, `listBranches()`, `getCommit()`, `getLatestCommit()`, `updateCommitStatus()`, `createTag()`, plus repo/tree/content reads
 
 ## Core patterns
 - **GitHub App auth**: `initializeVariables($installationId, $privateKey, $githubAppId)` generates a short-lived JWT via `adhocore/jwt`, exchanges it for an installation access token, caches it in `utopia-php/cache` until expiry
+- **GitLab OAuth auth**: `GitLab::initializeVariables($installationId, $privateKey, ?$appId, ?$accessToken, ?$refreshToken)` — the constructor signature is OAuth-shaped (access + refresh token) rather than App/JWT, and `setEndpoint()` swaps the API base URL for self-hosted GitLab. `generateAccessToken()` is the protected hook subclasses use for refresh
 - **Uses `utopia-php/fetch`** (not Guzzle) for HTTP — Swoole-compatible, no cURL blocking in coroutines
 - **All mutation methods return `array<mixed>`** from the provider API; webhook creation uniquely returns `int` (webhook ID) for subsequent deletion
 - **No Adapter/Type split beyond `TYPE_GIT`** — implies future Mercurial/SVN adapters were planned but never built

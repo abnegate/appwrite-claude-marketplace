@@ -18,7 +18,8 @@ Consistent `Device` abstraction over local filesystem and S3-compatible object s
 - `Storage\Validator\{File,FileExt,FileName,FileSize,FileType,Upload}` — request-side validators
 
 ## Core patterns
-- **Chunked upload protocol**: `upload($source, $path, $chunk, $chunks, $metadata)` with caller-owned `$metadata` by-ref that persists S3 multipart upload IDs and parts between chunks
+- **Chunked upload protocol**: `upload($source, $path, $chunk, $chunks, $metadata)` with caller-owned `$metadata` by-ref that persists S3 multipart upload IDs and parts between chunks. **Chunks may now arrive out-of-order on the `Local` adapter** — the assembly code counts staged chunks rather than asserting `chunk == $chunks` on the final call, so concurrent resumable uploads no longer deadlock on a missing tail
+- **Idempotent `joinChunks` finalization** — both `Local` and `S3` short-circuit if the destination object already exists, so two workers racing to finalize the same upload (e.g. retried last chunk) do not corrupt the assembled file. `Local` writes assembled output to a `tempnam`-suffixed file and gracefully unwinds if `rename()` loses the race
 - **`transfer($path, $dest, $targetDevice)`** copies across any two devices using `$transferChunkSize` (default 20MB) — reuse for bucket-to-bucket moves without downloading to disk
 - All writes use `getPath()` to produce a sharded tree (e.g. `ab/cd/ef/abcdef…`) so a flat bucket doesn't become unlistable
 - Telemetry injected via constructor; every op is timed into a single `storage.operation` histogram tagged by method

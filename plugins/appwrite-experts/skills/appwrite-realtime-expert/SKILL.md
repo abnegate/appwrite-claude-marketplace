@@ -38,6 +38,17 @@ account
 memberships
 ```
 
+### Action-suffixed channels
+
+`Realtime::SUPPORTED_ACTIONS = ['create', 'update', 'upsert', 'delete']`. The publisher (`fromPayload`) emits an action-suffixed sibling for every channel whose **last or second-to-last segment** is in `RESOURCE_LEAF_NAMES = ['documents','rows','files','executions','functions','account','teams','memberships']`. So a single document update emits both:
+
+```
+databases.db1.collections.col1.documents.doc1
+databases.db1.collections.col1.documents.doc1.update
+```
+
+…letting clients filter to a specific action with `subscribe('…documents.doc1.update')` instead of `documents.{id}` plus client-side filtering. `functions` is intentionally a **parent-only** entry: the bare `functions.{action}` channel is a silent no-op — only `functions.{functionId}.{action}` is supported.
+
 ## Event publishing from routes
 
 Routes declare events via labels:
@@ -72,9 +83,19 @@ The realtime server checks permissions before delivering events:
 1. Client opens WebSocket to `wss://{host}/v1/realtime`
 2. Authenticates via query param (`project` + session cookie)
 3. Sends subscription message with channel list
-4. Server registers channels for the connection
+4. Server registers channels for the connection — `Realtime::convertChannels($channels, $userId)` rewrites the literal `account` → `account.{userId}` and any `account.{action}` → `account.{userId}.{action}` (where `{action}` is in `SUPPORTED_ACTIONS`); illegal `account.{otherUserId}` variants are stripped. Guests keep the literal `account.{action}` form so the action filter still matches the broadcast `account.{action}` channel
 5. Events matching subscribed channels are pushed as JSON frames
 6. Connection closed on timeout, client disconnect, or server shutdown
+
+### `rebindAccountChannels` on auth changes
+
+When a connection re-authenticates (guest → user, or user → different user), `app/realtime.php` calls `Realtime::rebindAccountChannels($channels, $oldUserId, $newUserId)` which:
+
+- Rewrites the literal guest-form `account.{action}` to `account.{newUserId}.{action}`
+- Rewrites `account.{oldUserId}` and `account.{oldUserId}.{action}` to the new user
+- No-ops on a missing/empty target to avoid producing malformed `account.` strings
+
+This is the only safe way to mutate account-channel subscriptions in place — clients should not assume their subscription string survives a session change unchanged.
 
 ## PubSub
 
@@ -101,7 +122,9 @@ Wildcards are implicit — subscribing to `databases.db1.collections.col1.docume
 
 - Realtime is a separate Swoole process from the HTTP server — they share nothing in memory
 - Events are not queued — if the realtime server is down, events are lost (fire-and-forget via PubSub)
-- The `account` channel receives events for the authenticated user only — not all users
+- The `account` channel receives events for the authenticated user only — not all users; the server rewrites the literal `account` to `account.{userId}` at subscribe time
+- **Subscribing to bare `functions.{action}` is a silent no-op** — `functions` is parent-only in `RESOURCE_LEAF_NAMES`. Use `functions.{functionId}.{action}`
+- **Action suffixes are restricted to `SUPPORTED_ACTIONS`** (create/update/upsert/delete) — any other suffix is ignored
 - Subscription changes require a new message — you can't dynamically add/remove channels on an existing subscription
 - The realtime server has its own connection pool for database access (permission checking)
 - `reload_async: true` is critical for the realtime server — without it, SIGUSR1 kills WebSocket connections
