@@ -1,0 +1,3 @@
+# Default owner for everything in the repo. Bot PRs (sync-libraries.yml,
+# scan-commits.yml) will auto-request review from this owner.
+* @abnegate

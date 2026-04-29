@@ -1,0 +1,28 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": [
+        "config:recommended",
+        "schedule:weekly",
+        ":semanticCommits",
+        ":semanticCommitTypeAll(chore)"
+    ],
+    "labels": ["automation", "renovate"],
+    "rangeStrategy": "pin",
+    "packageRules": [
+        {
+            "matchManagers": ["github-actions"],
+            "pinDigests": true,
+            "groupName": "github-actions",
+            "automerge": false
+        },
+        {
+            "matchManagers": ["composer"],
+            "groupName": "composer",
+            "automerge": false
+        }
+    ],
+    "commitMessagePrefix": "(chore):",
+    "commitMessageAction": "bump",
+    "prHourlyLimit": 4,
+    "prConcurrentLimit": 6
+}
