@@ -97,17 +97,26 @@ jobs:
           total=0
           repos_with_activity=0
           while IFS= read -r repo; do
-            [ -z "${repo}" ] && continue
-            count=$(gh api "repos/${repo}/commits?since=${since}&per_page=100" \
-              --jq 'length' 2>/dev/null || echo 0)
+            if [ -z "${repo}" ]; then
+              continue
+            fi
+            # Fetch raw response; skip the repo on any HTTP error (private,
+            # archived, or removed). `--jq` would happily run against a
+            # `{"message":"Not Found"}` body and return a non-zero length,
+            # so we must check the exit code directly instead.
+            if ! response=$(gh api "repos/${repo}/commits?since=${since}&per_page=100" 2>/dev/null); then
+              echo "Skipping ${repo} (inaccessible)"
+              continue
+            fi
+            count=$(printf '%s' "${response}" | jq 'length')
             if [ "${count}" = "0" ]; then
               continue
             fi
             {
               echo "## ${repo} (${count} commits)"
               echo
-              gh api "repos/${repo}/commits?since=${since}&per_page=100" \
-                --jq '.[] | "- " + (.sha[:7]) + " " + (.commit.message | split("\n")[0]) + " -- " + (.commit.author.name)'
+              printf '%s' "${response}" \
+                | jq -r '.[] | "- " + (.sha[:7]) + " " + (.commit.message | split("\n")[0]) + " -- " + (.commit.author.name)'
               echo
             } >> commits.md
             total=$((total + count))
