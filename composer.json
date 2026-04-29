@@ -1,0 +1,42 @@
+{
+    "name": "abnegate/appwrite-claude-marketplace",
+    "description": "AI coding-agent plugins tuned for the Appwrite / Utopia / Swoole stack.",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.3",
+        "utopia-php/cli": "0.23.*",
+        "utopia-php/validators": "0.2.*",
+        "utopia-php/console": "0.2.*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "12.*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Marketplace\\Sync\\": "src/Sync/",
+            "Marketplace\\Markdown\\": "src/Markdown/",
+            "Marketplace\\Validation\\": "src/Validation/",
+            "Marketplace\\Index\\": "src/Index/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Marketplace\\Tests\\Sync\\": "tests/Sync/",
+            "Marketplace\\Tests\\Validation\\": "tests/Validation/",
+            "Marketplace\\Tests\\Index\\": "tests/Index/",
+            "Marketplace\\Tests\\Hook\\": "tests/Hook/"
+        }
+    },
+    "bin": [
+        "bin/sync-libraries",
+        "bin/validate-skills",
+        "bin/generate-index"
+    ],
+    "scripts": {
+        "test": "phpunit",
+        "sync": "php bin/sync-libraries",
+        "validate": "php bin/validate-skills",
+        "index": "php bin/generate-index"
+    }
+}

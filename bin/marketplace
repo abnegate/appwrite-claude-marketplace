@@ -1,0 +1,114 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use Marketplace\Index\Generator;
+use Marketplace\Sync\Application as SyncApplication;
+use Marketplace\Sync\GhClient;
+use Marketplace\Validation\Validator;
+use Utopia\CLI\Adapters\Generic;
+use Utopia\CLI\CLI;
+use Utopia\Console;
+use Utopia\Validator\Boolean;
+
+$autoloads = [
+    __DIR__ . '/../vendor/autoload.php',
+    __DIR__ . '/../../../autoload.php',
+];
+foreach ($autoloads as $autoload) {
+    if (is_file($autoload)) {
+        require_once $autoload;
+        break;
+    }
+}
+
+$repoRoot = dirname(__DIR__);
+
+if (($argv[1] ?? '') === '' || in_array($argv[1] ?? '', ['-h', '--help', 'help'], true)) {
+    Console::log('Usage: bin/marketplace <task> [params]');
+    Console::log('');
+    Console::log('Tasks:');
+    Console::log('  sync      Detect upstream-org drift (params: --json, --regenerate-index, --fail-on-drift)');
+    Console::log('  validate  Validate frontmatter, manifests, and eval shapes');
+    Console::log('  index     Regenerate the utopia-experts skill INDEX.md');
+    Console::log('');
+    Console::log('Boolean params accept --name=true (e.g. bin/marketplace sync --json=true).');
+    exit(0);
+}
+
+$cli = new CLI(new Generic());
+
+$cli->error()
+    ->inject('error')
+    ->action(function (\Throwable $error): void {
+        Console::error($error->getMessage());
+        exit(1);
+    });
+
+$cli
+    ->task('sync')
+    ->desc('Detect drift between upstream orgs and local skills.')
+    ->param('json', 'false', new Boolean(true), 'Emit machine-readable JSON', true)
+    ->param('regenerate-index', 'false', new Boolean(true), 'Re-run the index generator after the diff', true)
+    ->param('fail-on-drift', 'false', new Boolean(true), 'Exit 2 if any drift is detected', true)
+    ->action(function (bool $json, bool $regenerateIndex, bool $failOnDrift) use ($repoRoot): void {
+        $app = new SyncApplication(client: new GhClient(), repoRoot: $repoRoot);
+        $args = [];
+        if ($json) {
+            $args[] = '--json';
+        }
+        if ($regenerateIndex) {
+            $args[] = '--regenerate-index';
+        }
+        if ($failOnDrift) {
+            $args[] = '--fail-on-drift';
+        }
+        exit($app->run($args, STDOUT, STDERR));
+    });
+
+$cli
+    ->task('validate')
+    ->desc('Validate frontmatter, plugin manifests, and eval shapes.')
+    ->action(function () use ($repoRoot): void {
+        $result = (new Validator($repoRoot))->validate();
+        if (!$result->isOk()) {
+            foreach ($result->errors as $error) {
+                Console::error('  ' . $error);
+            }
+            Console::error(sprintf(
+                "\nFAIL: %d errors across %d skills, %d commands, %d agents, %d evals, %d trigger queries",
+                count($result->errors),
+                $result->skillCount,
+                $result->commandCount,
+                $result->agentCount,
+                $result->evalCount,
+                $result->triggerCount,
+            ));
+            exit(1);
+        }
+        Console::success(sprintf(
+            'OK: %d skills, %d commands, %d agents, %d evals, %d trigger queries — all valid',
+            $result->skillCount,
+            $result->commandCount,
+            $result->agentCount,
+            $result->evalCount,
+            $result->triggerCount,
+        ));
+    });
+
+$cli
+    ->task('index')
+    ->desc('Regenerate plugins/utopia-experts/skills/INDEX.md.')
+    ->action(function () use ($repoRoot): void {
+        $generator = new Generator($repoRoot);
+        $report = $generator->run();
+        Console::success(sprintf(
+            'wrote %s (%d skills across %d categories)',
+            $report->indexPath,
+            $report->skillCount,
+            $report->categoryCount,
+        ));
+    });
+
+$cli->run();

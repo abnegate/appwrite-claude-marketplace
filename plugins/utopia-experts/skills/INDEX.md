@@ -2,7 +2,7 @@
 
 Auto-generated index of the 50 `utopia-*-expert` skills in this plugin.
 The `utopia-router` agent reads this file first to decide which 1-3 skills to load
-for a given question. Regenerate with `scripts/generate_index.py` after any skill change.
+for a given question. Regenerate with `bin/marketplace index` after any skill change.
 
 ## How to use
 
