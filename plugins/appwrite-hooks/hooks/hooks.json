@@ -7,27 +7,27 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/destructive_guard_hook.py"
+            "command": "php ${CLAUDE_PLUGIN_ROOT}/hooks/destructive_guard.php"
           },
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/force_push_guard_hook.py"
+            "command": "php ${CLAUDE_PLUGIN_ROOT}/hooks/force_push_guard.php"
           },
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/staged_diff_scan_hook.py"
+            "command": "php ${CLAUDE_PLUGIN_ROOT}/hooks/staged_diff_scan.php"
           },
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/conventional_commit_hook.py"
+            "command": "php ${CLAUDE_PLUGIN_ROOT}/hooks/conventional_commit.php"
           },
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/regression_test_hook.py"
+            "command": "php ${CLAUDE_PLUGIN_ROOT}/hooks/regression_test.php"
           },
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/format_lint_hook.py"
+            "command": "php ${CLAUDE_PLUGIN_ROOT}/hooks/format_lint.php"
           }
         ]
       },
@@ -36,7 +36,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/secrets_guard_hook.py"
+            "command": "php ${CLAUDE_PLUGIN_ROOT}/hooks/secrets_guard.php"
           }
         ]
       }
