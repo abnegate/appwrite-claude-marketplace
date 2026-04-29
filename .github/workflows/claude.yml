@@ -57,7 +57,6 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           track_progress: true
           claude_args: |
-            --max-turns 30
             --model claude-opus-4-7
           prompt: |
             You are responding to a GitHub event on this repo. The event
