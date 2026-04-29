@@ -38,7 +38,7 @@ jobs:
       - name: Generate drift report
         id: drift
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.CLAUDE_PUSH_TOKEN }}
         run: |
           bin/marketplace sync --json=true > drift.json
           bin/marketplace sync | tee drift.txt

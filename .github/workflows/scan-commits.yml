@@ -83,7 +83,7 @@ jobs:
       - name: Collect upstream commits
         id: collect
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.CLAUDE_PUSH_TOKEN }}
           SINCE_DAYS: ${{ steps.inputs.outputs.since_days }}
         run: |
           set -euo pipefail
