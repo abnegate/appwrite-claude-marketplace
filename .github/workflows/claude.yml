@@ -58,7 +58,7 @@ jobs:
           track_progress: true
           claude_args: |
             --model claude-opus-4-7
-            --permission-mode bypassPermissions
+            --dangerously-skip-permissions
           prompt: |
             You are responding to a GitHub event on this repo. The event
             type is in the `EVENT_NAME` environment variable. Read the

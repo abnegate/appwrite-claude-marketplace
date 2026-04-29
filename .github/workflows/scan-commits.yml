@@ -127,7 +127,7 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           claude_args: |
             --model claude-opus-4-7
-            --permission-mode bypassPermissions
+            --dangerously-skip-permissions
           prompt: |
             You are reviewing the past week's upstream commits across the
             `appwrite`, `appwrite-labs`, `utopia-php`, and `open-runtimes`
