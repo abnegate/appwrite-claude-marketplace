@@ -138,7 +138,7 @@ final class Generator
             '- **Swoole pool stack** — `utopia-pools-expert` + `utopia-database-expert` + `utopia-cache-expert` + `utopia-mongo-expert`',
             '- **SDK regen cascade** — `utopia-http-expert` + `utopia-validators-expert` + `utopia-platform-expert`',
             '- **Custom-domain onboarding** — `utopia-domains-expert` + `utopia-dns-expert` + `utopia-vcs-expert`',
-            '- **Ingestion pipeline** — `utopia-cloudevents-expert` + `utopia-clickhouse-expert` + `utopia-usage-expert`',
+            '- **Ingestion pipeline** — `utopia-cloudevents-expert` + `utopia-usage-expert`',
             '- **Rate limiting** — `utopia-abuse-expert` + `utopia-waf-expert` + `utopia-cache-expert`',
             '- **Messaging worker** — `utopia-messaging-expert` + `utopia-queue-expert` + `utopia-async-expert`',
             '',

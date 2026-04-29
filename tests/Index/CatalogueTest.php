@@ -42,7 +42,7 @@ final class CatalogueTest extends TestCase
         $this->assertSame('other', Catalogue::lookup('utopia-mystery-expert'));
     }
 
-    public function testAllFiftySkillsHaveACategory(): void
+    public function testEverySkillHasACategory(): void
     {
         $all = [];
         foreach (Catalogue::all() as $category) {
@@ -50,7 +50,7 @@ final class CatalogueTest extends TestCase
                 $all[] = $skill;
             }
         }
-        $this->assertCount(50, $all);
+        $this->assertCount(55, $all);
         foreach ($all as $skill) {
             $this->assertNotSame('other', Catalogue::lookup($skill), sprintf('%s has no category', $skill));
         }
