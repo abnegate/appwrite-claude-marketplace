@@ -1,0 +1,260 @@
+name: scan upstream commits
+
+on:
+  schedule:
+    # Mondays at 06:00 UTC -- runs after sync-libraries so any new
+    # skills it scaffolded are already in main.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      since_days:
+        description: 'How many days of commits to scan (numeric only)'
+        default: '7'
+        required: false
+      repos_override:
+        description: 'Optional newline-separated org/repo list (defaults to .github/scan-repos.txt)'
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: scan-commits
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    name: scan commits and propose plugin additions
+    runs-on: ubuntu-latest
+    env:
+      SINCE_DAYS_RAW: ${{ github.event.inputs.since_days || '7' }}
+      REPOS_OVERRIDE: ${{ github.event.inputs.repos_override }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f # v2.37.0
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: composer:v2
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Validate inputs
+        id: inputs
+        run: |
+          set -euo pipefail
+          if ! [[ "${SINCE_DAYS_RAW}" =~ ^[0-9]+$ ]]; then
+            echo "since_days must be numeric, got: ${SINCE_DAYS_RAW}" >&2
+            exit 1
+          fi
+          if [ "${SINCE_DAYS_RAW}" -lt 1 ] || [ "${SINCE_DAYS_RAW}" -gt 90 ]; then
+            echo "since_days must be 1..90, got: ${SINCE_DAYS_RAW}" >&2
+            exit 1
+          fi
+          echo "since_days=${SINCE_DAYS_RAW}" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve repo list
+        id: repos
+        run: |
+          set -euo pipefail
+          if [ -n "${REPOS_OVERRIDE:-}" ]; then
+            printf '%s\n' "${REPOS_OVERRIDE}" > repos.txt
+          else
+            cp .github/scan-repos.txt repos.txt
+          fi
+          # Strip comments and blank lines, validate `org/repo` shape.
+          grep -Ev '^\s*(#|$)' repos.txt | awk 'NF' | sort -u > repos.cleaned
+          if ! grep -Eq '^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$' repos.cleaned; then
+            echo "repo list is empty or malformed" >&2
+            exit 1
+          fi
+          mv repos.cleaned repos.txt
+          count=$(wc -l < repos.txt)
+          echo "count=${count}" >> "$GITHUB_OUTPUT"
+          echo "Scanning ${count} repos."
+
+      - name: Collect upstream commits
+        id: collect
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SINCE_DAYS: ${{ steps.inputs.outputs.since_days }}
+        run: |
+          set -euo pipefail
+          since=$(date -u -d "${SINCE_DAYS} days ago" +%Y-%m-%dT%H:%M:%SZ)
+          echo "Scanning commits since ${since}"
+          : > commits.md
+          {
+            echo "# Upstream commits since ${since}"
+            echo
+          } >> commits.md
+          total=0
+          repos_with_activity=0
+          while IFS= read -r repo; do
+            [ -z "${repo}" ] && continue
+            count=$(gh api "repos/${repo}/commits?since=${since}&per_page=100" \
+              --jq 'length' 2>/dev/null || echo 0)
+            if [ "${count}" = "0" ]; then
+              continue
+            fi
+            {
+              echo "## ${repo} (${count} commits)"
+              echo
+              gh api "repos/${repo}/commits?since=${since}&per_page=100" \
+                --jq '.[] | "- " + (.sha[:7]) + " " + (.commit.message | split("\n")[0]) + " -- " + (.commit.author.name)'
+              echo
+            } >> commits.md
+            total=$((total + count))
+            repos_with_activity=$((repos_with_activity + 1))
+          done < repos.txt
+          echo "total=${total}" >> "$GITHUB_OUTPUT"
+          echo "active=${repos_with_activity}" >> "$GITHUB_OUTPUT"
+          echo "Total commits collected: ${total} across ${repos_with_activity} repos"
+
+      - name: Skip if no commits
+        if: steps.collect.outputs.total == '0'
+        run: echo "No new upstream commits in the window. Nothing to do."
+
+      - name: Analyse with Claude Code
+        if: steps.collect.outputs.total != '0'
+        uses: anthropics/claude-code-action@b3c0320e7e8228fcafe773fda5bfd427aa8d1c34 # v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: |
+            --max-turns 80
+            --model claude-opus-4-7
+          prompt: |
+            You are reviewing the past week's upstream commits across the
+            `appwrite`, `appwrite-labs`, `utopia-php`, and `open-runtimes`
+            orgs. Your job is to keep this marketplace's plugin catalogue
+            in sync with what those repos actually do today.
+
+            The commit list is in `commits.md`. Treat it as the input.
+
+            Plugins live under `plugins/`:
+
+            - `appwrite-hooks/hooks/`            -- PreToolUse guard scripts
+            - `appwrite-skills/commands/`        -- slash commands
+            - `appwrite-conventions/skills/`     -- on-demand reference skills
+            - `utopia-experts/skills/`           -- per-library expert skills
+            - `utopia-experts/agents/`           -- routing agents
+            - `appwrite-experts/skills/`         -- per-service expert skills
+            - `appwrite-experts/agents/`         -- routing agents
+
+            You are allowed to:
+              - ADD new skills, commands, agents, or hooks
+              - MODIFY existing skills/commands/agents/hooks when the
+                upstream library has actually changed in a way that makes
+                the current content wrong, stale, or incomplete
+              - DELETE the body of an existing skill only if the upstream
+                library has been removed or merged into another, and only
+                with a citation in `SUGGESTIONS.md`
+
+            Review process:
+
+            1. Read `commits.md`, `README.md`, `plugins/utopia-experts/skills/INDEX.md`,
+               and `plugins/appwrite-experts/skills/INDEX.md`.
+
+            2. Group commits by theme. Look for:
+               - new public APIs / services / runtimes / proxies / sidecars
+                 with no expert skill
+               - breaking changes inside a library that already has a skill
+                 -- the skill must be updated to match
+               - recurring footgun patterns that suggest a hook would catch
+                 them
+               - new workflows that a slash command could automate
+               - routing decisions that an agent could encode
+               - new SDK surfaces that warrant SDK-specific skills
+
+            3. For each candidate change, decide whether the signal is
+               strong enough. The bar is "100% value" -- if you cannot
+               articulate the concrete user this helps and the question
+               they would ask the new/updated entry, do not make the
+               change.
+
+            4. There is no upper bound on how many additions or
+               modifications you make. Make as many as the commits
+               genuinely justify -- but no more.
+
+            5. For each change you make:
+               - Skill: `plugins/<plugin>/skills/<name>/SKILL.md` -- frontmatter
+                 with `name` (matching the directory) and `description`
+                 (<= 500 chars). Read the upstream source via `gh api`
+                 before writing -- do not fabricate APIs.
+               - Command: `plugins/<plugin>/commands/<name>.md` -- frontmatter
+                 with `description`, then the prompt body.
+               - Agent: `plugins/<plugin>/agents/<name>.md` -- frontmatter
+                 with `name` and `description`, then the system prompt.
+               - Hook: a PHP file in `plugins/appwrite-hooks/hooks/`
+                 (require `_shared.php`, follow the existing hook style),
+                 plus a registration entry in `hooks/hooks.json` and a
+                 PHPUnit class under `tests/Hook/<name>Test.php`
+                 extending `HookTestCase`.
+
+            6. After all changes (run `composer install` first if
+               `vendor/` is missing):
+               - `bin/marketplace validate`
+               - `bin/marketplace index` (if you added or removed a
+                 utopia skill -- also update `Catalogue::all()` in
+                 `src/Index/Catalogue.php`)
+               - `vendor/bin/phpunit`
+
+               Fix any failures before stopping.
+
+            7. Write a single file `SUGGESTIONS.md` at the repo root with:
+               - A summary of which themes you saw in the commits
+               - One section per change you made, citing the commits
+                 (`org/repo@sha`) that justify it
+               - One section listing themes you considered but rejected,
+                 with a one-sentence reason each
+
+            If after analysis you decide nothing in this commit window
+            warrants a change, write `SUGGESTIONS.md` with that
+            conclusion and stop -- do not scaffold or modify anything.
+
+            Constraints:
+            - Never invent APIs or behaviour. Cite an upstream commit or
+              source file for every claim, in the file itself or in
+              `SUGGESTIONS.md`.
+            - Modifications must reduce drift, not introduce churn. If
+              you cannot point to a specific upstream change that makes
+              the existing content wrong, leave it alone.
+            - Frontmatter `description` must remain <= 500 chars.
+
+      - name: Remove commits artifact
+        if: always()
+        run: rm -f commits.md repos.txt repos.cleaned
+
+      - name: Open pull request
+        if: steps.collect.outputs.total != '0'
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        env:
+          ACTIVE_REPOS: ${{ steps.collect.outputs.active }}
+          TOTAL_COMMITS: ${{ steps.collect.outputs.total }}
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: bot/scan-commits
+          base: main
+          commit-message: 'feat: propose marketplace updates from upstream commits'
+          title: 'feat: propose marketplace updates from upstream commits'
+          body: |
+            Weekly upstream commit scan from `.github/workflows/scan-commits.yml`.
+
+            Claude Code analysed the past week of commits across
+            `appwrite/*`, `appwrite-labs/*`, `utopia-php/*`, and
+            `open-runtimes/*` (full whitelist in `.github/scan-repos.txt`)
+            and proposed zero or more additions / modifications. Rationale
+            and citations are in `SUGGESTIONS.md`.
+
+            Treat scaffolded files and edits as drafts -- read each one
+            against the cited commits before merging. If `SUGGESTIONS.md`
+            is the only file changed, the scan concluded no change was
+            warranted.
+          labels: |
+            automation
+            scan-commits
+          delete-branch: true

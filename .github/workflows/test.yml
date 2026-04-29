@@ -11,71 +11,67 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  hooks:
-    name: appwrite-hooks unit tests
+  phpunit:
+    name: PHPUnit (Sync + Validation + Index + Hook)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up PHP
+        uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f # v2.37.0
         with:
-          python-version: '3.11'
+          php-version: '8.3'
+          coverage: none
+          tools: composer:v2
 
-      - name: Run hook test suite
-        env:
-          APPWRITE_HOOKS_NO_METRICS: '1'
-        run: python3 plugins/appwrite-hooks/hooks/test_hooks.py
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
 
-  unit-tests:
-    name: validator + generator unit tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Run validate_skills.py tests
-        run: python3 tests/test_validate_skills.py
-
-      - name: Run generate_index.py tests
-        run: python3 tests/test_generate_index.py
+      - name: Run PHPUnit
+        run: vendor/bin/phpunit
 
   validate:
     name: skill + command + manifest + eval validation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up PHP
+        uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f # v2.37.0
         with:
-          python-version: '3.11'
+          php-version: '8.3'
+          coverage: none
+          tools: composer:v2
 
-      - name: Validate frontmatter + JSON manifests + eval shapes
-        run: python3 scripts/validate_skills.py
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Validate frontmatter, manifests, and eval shapes
+        run: bin/marketplace validate
 
   index:
     name: utopia-experts index is up to date
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up PHP
+        uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f # v2.37.0
         with:
-          python-version: '3.11'
+          php-version: '8.3'
+          coverage: none
+          tools: composer:v2
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Regenerate index and diff
         run: |
-          python3 plugins/utopia-experts/scripts/generate_index.py
+          bin/marketplace index
           if ! git diff --exit-code plugins/utopia-experts/skills/INDEX.md; then
             echo ""
             echo "INDEX.md is out of date. Run:"
-            echo "  python3 plugins/utopia-experts/scripts/generate_index.py"
+            echo "  bin/marketplace index"
             echo "and commit the result."
             exit 1
           fi

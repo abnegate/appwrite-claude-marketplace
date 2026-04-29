@@ -1,0 +1,133 @@
+name: sync libraries
+
+on:
+  schedule:
+    # Mondays at 04:30 UTC -- before the commit-scan workflow so its PR
+    # builds on a fresh skill catalogue.
+    - cron: '30 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: sync-libraries
+  cancel-in-progress: false
+
+jobs:
+  drift:
+    name: scrape orgs and propose missing skills
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f # v2.37.0
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: composer:v2
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Generate drift report
+        id: drift
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bin/marketplace sync --json=true > drift.json
+          bin/marketplace sync | tee drift.txt
+          if bin/marketplace sync --fail-on-drift=true > /dev/null; then
+            echo "has_drift=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_drift=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Scaffold or refresh skills with Claude Code
+        if: steps.drift.outputs.has_drift == 'true'
+        uses: anthropics/claude-code-action@b3c0320e7e8228fcafe773fda5bfd427aa8d1c34 # v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: |
+            --max-turns 60
+            --model claude-opus-4-7
+          prompt: |
+            The script `bin/marketplace sync` has detected drift
+            between the upstream `utopia-php`, `appwrite`, `appwrite-labs`,
+            and `open-runtimes` GitHub orgs and the skills shipped in this
+            marketplace. The structured drift report is in `drift.json`;
+            a human-readable version is in `drift.txt`.
+
+            Your job:
+
+            1. For every entry in `drift.json#utopia.missing`, scaffold a
+               new skill at `plugins/utopia-experts/skills/<skill-name>/SKILL.md`.
+               Match the structure of an existing skill such as
+               `plugins/utopia-experts/skills/utopia-http-expert/SKILL.md`:
+               YAML frontmatter with `name` (matching the directory) and a
+               `description` <= 500 chars, then sections covering Purpose,
+               Public API, Patterns, Gotchas, and Composition. Read the
+               upstream README and any source files at the linked GitHub
+               URL via the `gh` CLI to ground the content -- do not
+               fabricate APIs.
+
+            2. Add each new skill to the `Catalogue::all()` map in
+               `src/Index/Catalogue.php` under the most appropriate
+               category (or leave it out so it falls into `Other`).
+
+            3. Run `bin/marketplace index` to refresh
+               `plugins/utopia-experts/skills/INDEX.md`.
+
+            4. Run `bin/marketplace validate` and `vendor/bin/phpunit`.
+               Resolve any failures before stopping.
+
+            5. For entries in `drift.json#utopia.orphaned` or
+               `drift.json#utopia.archived`, decide whether to delete the
+               local skill or leave it. If you delete it, also remove its
+               entry from the `Catalogue::all()` map and regenerate
+               `INDEX.md`. Cite the reason in the eventual PR description.
+
+            6. For entries in `drift.json#appwrite.new_or_untracked`,
+               `drift.json#appwrite_labs.repos`, and
+               `drift.json#open_runtimes.repos`, do NOT scaffold anything
+               here -- the commit-scan workflow handles that judgement.
+               Just append a short note to the eventual PR description.
+
+            There is no cap on additions. Add or remove as many skills as
+            the upstream actually justifies. Do not modify unrelated
+            files. Stop after step 6.
+
+      - name: Remove drift artifacts
+        if: always()
+        run: rm -f drift.json drift.txt
+
+      - name: Open pull request
+        if: steps.drift.outputs.has_drift == 'true'
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: bot/sync-libraries
+          base: main
+          commit-message: 'chore: sync skill catalogue with upstream orgs'
+          title: 'chore: sync skill catalogue with upstream orgs'
+          body: |
+            Automated drift report from `bin/marketplace sync`.
+
+            Claude Code has scaffolded any missing `utopia-*-expert` skills
+            and refreshed `INDEX.md`. Review each scaffolded skill against
+            the upstream README before merging -- auto-generated content
+            is a starting point, not a finished reference.
+
+            Run locally to reproduce:
+
+            ```
+            composer install
+            bin/marketplace sync --regenerate-index=true
+            ```
+          labels: |
+            automation
+            sync-libraries
+          delete-branch: true
