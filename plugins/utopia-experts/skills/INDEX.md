@@ -1,6 +1,6 @@
 # Utopia Experts — Skill Index
 
-Auto-generated index of the 50 `utopia-*-expert` skills in this plugin.
+Auto-generated index of the 55 `utopia-*-expert` skills in this plugin.
 The `utopia-router` agent reads this file first to decide which 1-3 skills to load
 for a given question. Regenerate with `bin/marketplace index` after any skill change.
 
@@ -25,6 +25,7 @@ read this index, pick the most relevant skills, and return a synthesised answer.
 | Skill | Description |
 |---|---|
 | `utopia-database-expert` | Expert reference for utopia-php/database — the adapter-based CRUD/query/permission layer that backs every Appwrite collection. Consult for queries, attributes, relationships, transactions, the filter chain, cache invalidation, and adapter pitfalls. |
+| `utopia-database-proxy-expert` | Expert reference for utopia-php/database-proxy — a Swoole HTTP service that fronts utopia-php/database adapters and exposes one POST /v1/queries endpoint per call. Consult when running Appwrite workers behind a centralized DB pool, wiring x-utopia-* headers (namespace, database, auth, tenant, share-tables, timeouts), or adjusting the secret/method-RPC contract. |
 | `utopia-dsn-expert` | Expert reference for utopia-php/dsn — dependency-free DSN parser wrapping parse_url with required-field validation and lazy query-param parsing. Consult when adding connection-string handling or hunting credential-leak-via-logging bugs. |
 | `utopia-mongo-expert` | Expert reference for utopia-php/mongo — the Swoole-native wire-protocol MongoDB client. Consult when debugging Mongo adapter issues, sizing pools, implementing replica-set failover, or hunting coroutine-blocking patterns. |
 | `utopia-pools-expert` | Expert reference for utopia-php/pools — generic Pool<TResource> with reclaim, retry/reconnect, OpenTelemetry gauges, and Swoole Channel backend. Consult for sizing heuristics, leak hunting, and the Group::use() scoped borrow idiom. |
@@ -35,6 +36,7 @@ read this index, pick the most relevant skills, and return a synthesised answer.
 | Skill | Description |
 |---|---|
 | `utopia-cache-expert` | Expert reference for utopia-php/cache — unified TTL-aware K/V cache over Redis/Memcached/Hazelcast/filesystem/memory with Sharding and Pool composition. Consult for stampede protection, read-time TTL semantics, and adapter composition. |
+| `utopia-cdn-expert` | Expert reference for utopia-php/cdn — provider-agnostic cache purging (Cloudflare, Fastly) and CDN-managed TLS subscriptions (Fastly TLS). Consult when invalidating edge cache, provisioning certs for Appwrite Sites/Functions custom domains, or adding a new CDN backend. Note: `main` is currently a stub; the live API surface lives on the `feat/init-cdn-providers` branch. |
 | `utopia-compression-expert` | Expert reference for utopia-php/compression — zero-dependency facade across Brotli/Deflate/GZIP/LZ4/Snappy/XZ/Zstd with HTTP Accept-Encoding negotiation. Consult for response compression middleware or storage-at-rest compression. |
 | `utopia-fetch-expert` | Expert reference for utopia-php/fetch — HTTP client with Curl and Swoole adapters, auto-retry on 5xx, and a Response wrapper. Consult when hitting third-party APIs from workers, fixing timeout-in-ms bugs, or enabling Swoole non-blocking I/O. |
 | `utopia-migration-expert` | Expert reference for utopia-php/migration — cross-service Resource migration engine (Appwrite/Supabase/NHost/Firebase/CSV/JSON sources and destinations). Consult for resumable migration design, parallel group execution, and source/destination extension. |
@@ -54,10 +56,12 @@ read this index, pick the most relevant skills, and return a synthesised answer.
 
 | Skill | Description |
 |---|---|
+| `utopia-circuit-breaker-expert` | Expert reference for utopia-php/circuit-breaker — three-state breaker (CLOSED/OPEN/HALF_OPEN) protecting calls to misbehaving downstream deps, with optional shared state via Redis or Swoole\Table and OpenTelemetry counters/gauges/up-down counters via utopia-php/telemetry. Consult when wrapping flaky integrations, sizing thresholds, or wiring shared state across Swoole workers. |
 | `utopia-cli-expert` | Expert reference for utopia-php/cli — lightweight CLI framework with task DSL, hooks, DI, and optional Swoole worker pooling. Consult when building Appwrite bin/* tasks, long-running workers, or when adding Swoole coroutines to batch jobs. |
 | `utopia-orchestration-expert` | Expert reference for utopia-php/orchestration — thin abstraction over Docker socket API and Docker CLI. Consult when working on the Appwrite Functions executor, debugging container lifecycle, or planning a Kubernetes adapter. |
 | `utopia-preloader-expert` | Expert reference for utopia-php/preloader — fluent helper for generating PHP opcache.preload scripts. Consult when shrinking Appwrite cold-start time or debugging preload-vs-ignore ordering bugs. |
 | `utopia-proxy-expert` | Expert reference for utopia-php/proxy — high-performance Swoole proxy (HTTP/TCP/SMTP) with Resolver interface and optional BPF sockmap. Consult when replacing Traefik for custom domains, building tenant-aware routing, or adding backend health checks. |
+| `utopia-swoole-expert` | Expert reference for utopia-php/swoole — the legacy Swoole adapter for utopia-php/framework v0.x (Request/Response/Files wrappers around Swoole\Http\Server). ARCHIVED upstream — superseded by utopia-php/http's first-party Swoole adapter. Consult only when maintaining services still pinned to `utopia-php/framework: 0.33.*` (e.g. older Appwrite microservices). |
 | `utopia-system-expert` | Expert reference for utopia-php/system — zero-dependency static helper for host CPU/memory/disk/network/IO and architecture detection. Consult when wiring health endpoints, runtime tag selection, or container resource feeds to telemetry. |
 
 ## Observability
@@ -76,6 +80,7 @@ read this index, pick the most relevant skills, and return a synthesised answer.
 |---|---|
 | `utopia-async-expert` | Expert reference for utopia-php/async — Promises/A+ concurrency and true multi-core Parallel execution for PHP 8.1+, auto-selecting Swoole/React/Amp/Parallel/Sync. Consult for concurrent I/O, CPU-bound fanout, and timeout patterns. |
 | `utopia-emails-expert` | Expert reference for utopia-php/emails — email parser/classifier with provider-aware canonicalization, free/disposable/corporate detection. Consult for signup gating, account dedupe, and validator composition. |
+| `utopia-lock-expert` | Expert reference for utopia-php/lock — one Lock interface, four backends (Mutex, Semaphore, File, Distributed). Coroutine channels for in-process; flock for cross-process; Redis SET-NX-EX with Lua release for cross-host. Consult when serialising work, capping concurrency pools, or coordinating cron/job leases across an Appwrite cluster. |
 | `utopia-messaging-expert` | Expert reference for utopia-php/messaging — multi-channel delivery library with 22+ adapters across Email/SMS/Push/Chat. Consult when wiring notification workers, adding provider fallback, or building GEOSMS-style regional routing. |
 | `utopia-queue-expert` | Expert reference for utopia-php/queue — Redis/AMQP-backed job queue with Swoole/Workerman workers, DI-driven job handlers, and explicit Commit/NoCommit/Retryable ack semantics. Consult when building Appwrite workers, priority tiers, or dead-letter patterns. |
 | `utopia-websocket-expert` | Expert reference for utopia-php/websocket — dependency-free abstraction over Swoole and Workerman WebSocket servers. Consult when building Appwrite realtime, implementing tenant isolation, or adding backpressure for slow clients. |
@@ -99,13 +104,13 @@ read this index, pick the most relevant skills, and return a synthesised answer.
 | `utopia-detector-expert` | Expert reference for utopia-php/detector — project environment identification for Appwrite Sites/Functions (runtime, framework, packager, rendering). Consult when auto-configuring Sites builds or Function runtimes. NOT a user-agent detector despite the name. |
 | `utopia-image-expert` | Expert reference for utopia-php/image — Imagick-backed image manipulation for the Appwrite Storage preview pipeline. Consult when adding format conversions, tuning quality defaults, or stripping EXIF for privacy. |
 | `utopia-registry-expert` | Expert reference for utopia-php/registry — dependency-free lazy DI container with named contexts for isolation. Consult when managing per-coroutine service lifetimes or debugging Swoole cross-request bleed. |
+| `utopia-view-expert` | Expert reference for utopia-php/view — minimalist .phtml rendering engine with `setParam`/`print`, registerable filters (escape, nl2p), parent/child composition via `exec()`, and an opt-in whitespace minifier that preserves `<textarea>`/`<pre>`. Consult when wiring server-rendered pages, transactional emails, or the legacy public site templates in Appwrite. |
 
 ## Misc
 
 | Skill | Description |
 |---|---|
 | `utopia-balancer-expert` | Expert reference for utopia-php/balancer — framework-agnostic client-side load balancer with Random/First/Last/RoundRobin algorithms, chained filters, and OTel-instrumented Group failover. Consult when picking executor nodes or wiring storage-adapter failover. |
-| `utopia-clickhouse-expert` | Expert reference for utopia-php/clickhouse — thin HTTP-interface ClickHouse client tailored for Appwrite audit/usage analytics. Consult when batching inserts, running multi-tenant shared-table ingestion, or debugging addslashes-based parameter escaping. |
 | `utopia-cloudevents-expert` | Expert reference for utopia-php/cloudevents — minimal PHP 8.3 CloudEvents v1.0.2 implementation. Consult when standardizing event envelopes between Appwrite services, Functions, webhooks, and Knative/Dapr consumers. |
 | `utopia-console-expert` | Expert reference for utopia-php/console — static helper for CLI output (colored log levels), prompts, subprocess execution with timeout, and a long-running daemon loop with automatic GC. Consult when building Appwrite bin workers or replacing ad-hoc echo/var_dump. |
 | `utopia-usage-expert` | Expert reference for utopia-php/usage — currently a STUB repository with no src. The active rebuild lives on claude/rebuild-analytics-clickhouse-OHWGZ. Consult before depending on this library in production. |

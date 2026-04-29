@@ -21,6 +21,7 @@ final class Catalogue
             ]),
             new Category('data', 'Data layer', [
                 'utopia-database-expert',
+                'utopia-database-proxy-expert',
                 'utopia-mongo-expert',
                 'utopia-query-expert',
                 'utopia-pools-expert',
@@ -29,6 +30,7 @@ final class Catalogue
             new Category('storage-io', 'Storage & I/O', [
                 'utopia-storage-expert',
                 'utopia-cache-expert',
+                'utopia-cdn-expert',
                 'utopia-fetch-expert',
                 'utopia-compression-expert',
                 'utopia-migration-expert',
@@ -46,6 +48,8 @@ final class Catalogue
                 'utopia-orchestration-expert',
                 'utopia-preloader-expert',
                 'utopia-proxy-expert',
+                'utopia-swoole-expert',
+                'utopia-circuit-breaker-expert',
             ]),
             new Category('observability', 'Observability', [
                 'utopia-logger-expert',
@@ -60,6 +64,7 @@ final class Catalogue
                 'utopia-websocket-expert',
                 'utopia-async-expert',
                 'utopia-emails-expert',
+                'utopia-lock-expert',
             ]),
             new Category('domain', 'Domain logic', [
                 'utopia-pay-expert',
@@ -74,11 +79,11 @@ final class Catalogue
                 'utopia-detector-expert',
                 'utopia-image-expert',
                 'utopia-agents-expert',
+                'utopia-view-expert',
             ]),
             new Category('misc', 'Misc', [
                 'utopia-console-expert',
                 'utopia-cloudevents-expert',
-                'utopia-clickhouse-expert',
                 'utopia-balancer-expert',
                 'utopia-usage-expert',
             ]),
