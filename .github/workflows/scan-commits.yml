@@ -242,6 +242,7 @@ jobs:
         run: rm -f commits.md repos.txt repos.cleaned
 
       - name: Open pull request
+        id: pr
         if: steps.collect.outputs.total != '0'
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         env:
@@ -262,11 +263,19 @@ jobs:
             and proposed zero or more additions / modifications. Rationale
             and citations are in `SUGGESTIONS.md`.
 
-            Treat scaffolded files and edits as drafts -- read each one
-            against the cited commits before merging. If `SUGGESTIONS.md`
-            is the only file changed, the scan concluded no change was
-            warranted.
+            The `bot-review` job in `claude.yml` will sanity-check every
+            scaffolded or modified file against its cited upstream source
+            and push fixes back to this branch before auto-merge fires.
+            If `SUGGESTIONS.md` is the only file changed, the scan
+            concluded no change was warranted.
           labels: |
             automation
             scan-commits
           delete-branch: true
+
+      - name: Enable auto-merge once CI is green
+        if: steps.pr.outputs.pull-request-number
+        env:
+          GH_TOKEN: ${{ secrets.CLAUDE_PUSH_TOKEN }}
+          PR_NUMBER: ${{ steps.pr.outputs.pull-request-number }}
+        run: gh pr merge --auto --squash --delete-branch "$PR_NUMBER"

@@ -10,9 +10,12 @@ on:
   issues:
     types: [opened, assigned]
   pull_request:
-    types: [opened]
+    types: [opened, synchronize, reopened]
     branches:
       - main
+  workflow_run:
+    workflows: ['test']
+    types: [completed]
 
 permissions:
   contents: write
@@ -21,29 +24,114 @@ permissions:
   id-token: write
 
 concurrency:
-  group: claude-${{ github.event.issue.number || github.event.pull_request.number || github.run_id }}
+  # Dedupe per branch so PR events and workflow_run events for the same
+  # bot branch share a queue (otherwise heal iterations could race).
+  group: claude-${{ github.head_ref || github.event.workflow_run.head_branch || github.event.issue.number || github.run_id }}
   cancel-in-progress: false
 
 jobs:
   bot-review:
-    name: review bot PRs
-    if: github.event_name == 'pull_request'
+    name: review and heal bot PRs
+    # Fires on:
+    #   - any pull_request event on a bot/* branch (first review pass +
+    #     re-review after the bot itself or anyone else pushes)
+    #   - completion of the `test` workflow on a bot/* branch when it
+    #     fails (heal CI failures that didn't manifest until the runner
+    #     finished)
+    if: |
+      (github.event_name == 'pull_request' && startsWith(github.head_ref, 'bot/')) ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure' && startsWith(github.event.workflow_run.head_branch, 'bot/'))
     runs-on: ubuntu-latest
-    env:
-      IS_BOT_PR: ${{ startsWith(github.head_ref, 'bot/') }}
     steps:
-      - name: Skip non-bot PRs
-        if: env.IS_BOT_PR != 'true'
-        run: echo "Not a bot/* PR -- nothing to review."
+      - name: Resolve event inputs
+        id: ctx
+        env:
+          GH_TOKEN: ${{ secrets.CLAUDE_PUSH_TOKEN }}
+          PR_HEAD_REF: ${{ github.head_ref }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          WR_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          WR_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+            branch="${PR_HEAD_REF}"
+            sha="${PR_HEAD_SHA}"
+          else
+            branch="${WR_HEAD_BRANCH}"
+            sha="${WR_HEAD_SHA}"
+          fi
+          echo "branch=${branch}" >> "$GITHUB_OUTPUT"
+          echo "sha=${sha}" >> "$GITHUB_OUTPUT"
+          # Resolve PR number from branch (workflow_run has no PR ref).
+          pr_number=$(gh pr list --head "${branch}" --state open --json number --jq '.[0].number // empty')
+          echo "pr_number=${pr_number}" >> "$GITHUB_OUTPUT"
+          if [ -z "${pr_number}" ]; then
+            echo "No open PR found for branch ${branch} -- nothing to review."
+          fi
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        if: env.IS_BOT_PR == 'true'
+        if: steps.ctx.outputs.pr_number
         with:
           fetch-depth: 0
           token: ${{ secrets.CLAUDE_PUSH_TOKEN }}
+          ref: ${{ steps.ctx.outputs.sha }}
+
+      - name: Loop guard
+        id: guard
+        if: steps.ctx.outputs.pr_number
+        env:
+          GH_TOKEN: ${{ secrets.CLAUDE_PUSH_TOKEN }}
+          PR_NUMBER: ${{ steps.ctx.outputs.pr_number }}
+        run: |
+          set -euo pipefail
+          # Cap consecutive auto-heal commits so a genuinely broken PR
+          # escalates to a human instead of looping forever.
+          base_ref="origin/${GITHUB_BASE_REF:-main}"
+          heal_commits=$(git log --pretty=%s "${base_ref}..HEAD" 2>/dev/null \
+            | grep -cE '^(chore|fix): (heal CI|address bot-review)' || true)
+          echo "heal_commits=${heal_commits}"
+          echo "heal_commits=${heal_commits}" >> "$GITHUB_OUTPUT"
+          if [ "${heal_commits}" -ge 3 ]; then
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "Reached 3 auto-heal commits without a green build. Escalating."
+            gh pr comment "${PR_NUMBER}" --body "Auto-heal hit the 3-commit cap without turning CI green. Needs a human look -- bot-review will not iterate further on this branch until the cap resets (manual commit or rebase)."
+          else
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Collect failing CI logs
+        id: logs
+        if: steps.ctx.outputs.pr_number && steps.guard.outputs.should_run == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.CLAUDE_PUSH_TOKEN }}
+          BOT_BRANCH: ${{ steps.ctx.outputs.branch }}
+          HEAD_SHA: ${{ steps.ctx.outputs.sha }}
+        run: |
+          set -euo pipefail
+          : > ci-failures.log
+          # Dump --log-failed for every completed, failed test.yml run on
+          # this SHA. Empty file => CI is either green or still running.
+          mapfile -t run_ids < <(gh run list \
+            --workflow test.yml \
+            --branch "${BOT_BRANCH}" \
+            --json databaseId,headSha,status,conclusion \
+            --jq ".[] | select(.headSha == \"${HEAD_SHA}\" and .status == \"completed\" and .conclusion == \"failure\") | .databaseId" \
+            || true)
+          for id in "${run_ids[@]}"; do
+            [ -z "${id}" ] && continue
+            echo "=== test.yml run ${id} (failed) ===" >> ci-failures.log
+            gh run view "${id}" --log-failed >> ci-failures.log 2>/dev/null || true
+            echo >> ci-failures.log
+          done
+          if [ -s ci-failures.log ]; then
+            echo "has_failures=true" >> "$GITHUB_OUTPUT"
+            wc -l ci-failures.log
+          else
+            echo "has_failures=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Set up PHP
-        if: env.IS_BOT_PR == 'true'
+        if: steps.ctx.outputs.pr_number && steps.guard.outputs.should_run == 'true'
         uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f # v2.37.0
         with:
           php-version: '8.3'
@@ -51,11 +139,11 @@ jobs:
           tools: composer:v2
 
       - name: Install Composer dependencies
-        if: env.IS_BOT_PR == 'true'
+        if: steps.ctx.outputs.pr_number && steps.guard.outputs.should_run == 'true'
         run: composer install --no-interaction --prefer-dist --no-progress
 
       - uses: anthropics/claude-code-action@b3c0320e7e8228fcafe773fda5bfd427aa8d1c34 # v1
-        if: env.IS_BOT_PR == 'true'
+        if: steps.ctx.outputs.pr_number && steps.guard.outputs.should_run == 'true'
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -64,30 +152,86 @@ jobs:
             --model claude-opus-4-7
             --dangerously-skip-permissions
           prompt: |
-            You are reviewing a `bot/*` pull request auto-generated by
-            `sync-libraries.yml` or `scan-commits.yml`.
+            You are reviewing AND fixing a `bot/*` pull request
+            auto-generated by `sync-libraries.yml` or `scan-commits.yml`.
+            There is no human author -- the PR will auto-merge as soon
+            as CI is green, so anything you flag must also be fixed in
+            this same run.
 
-            1. Check out the PR branch.
-            2. Run `composer install` if `vendor/` is missing, then
-               `bin/marketplace validate`, `bin/marketplace index`, and
-               `vendor/bin/phpunit`.
-            3. Sanity-check every scaffolded or modified skill against
-               the upstream source (use `gh api` to fetch the cited
-               repo files). Flag any fabricated APIs, missing citations,
-               or stale frontmatter.
-            4. Post a single review comment on the PR summarising: what
-               looks correct, what looks risky, and any concrete fix
-               suggestions.
+            This job re-runs on every push to the branch AND on every
+            failed `test` workflow run for the current SHA. Either way,
+            your job is the same: drive the branch to green. Iterations
+            are capped at 3 auto-heal commits; you may already see
+            previous heal commits in the history -- that is expected.
 
-            Constraints:
+            ## Inputs
+
+            - The runner has the PR branch checked out at the head SHA.
+              Confirm with `git status` and `git log -5 --oneline`.
+            - `ci-failures.log` (in the workspace root) contains the
+              concatenated `--log-failed` output of every failed
+              `test.yml` run for this SHA. If the file is empty or
+              absent, the only failures (if any) come from your own
+              local validators; otherwise treat it as your primary
+              signal for what is actually broken in CI.
+            - The PR number is available via
+              `gh pr view --json number -q .number`.
+
+            ## Procedure
+
+            1. If `ci-failures.log` is non-empty, read it first and
+               diagnose what `test.yml` (PHPUnit, validate, index) is
+               actually failing on. The `index` job fails when
+               `bin/marketplace index` produces a diff -- fix by
+               running `bin/marketplace index` locally and committing
+               the regenerated `INDEX.md`.
+            2. Run `bin/marketplace validate`, `bin/marketplace index`,
+               and `vendor/bin/phpunit` locally. Reproduce the failure,
+               then fix the root cause in source files (never suppress
+               a check, never delete a failing test).
+            3. Sanity-check every scaffolded or modified skill, command,
+               agent, or hook against the upstream source. Use `gh api`
+               to fetch the cited repo files. Fix in-place any of:
+                 - fabricated APIs / methods / class names
+                 - missing or wrong citations
+                 - stale frontmatter (`name` not matching directory,
+                   `description` over 500 chars, missing fields)
+                 - drift from the existing conventions in `README.md`
+                   and neighbouring files
+            4. If you made any fixes, commit them with a conventional
+               message and push to the PR branch:
+                 - `fix: heal CI <one-line reason>` if you addressed
+                   `ci-failures.log` content
+                 - `fix: address bot-review findings` for code review
+                   fixes that did not come from CI
+               (Both prefixes count toward the 3-commit auto-heal cap,
+               so consolidate fixes into one commit per iteration where
+               possible.) The runner's git identity is already
+               configured.
+            5. Re-run the validators and PHPUnit one final time after
+               your last commit so your local pass reflects the final
+               tree.
+            6. Post a single review comment on the PR listing:
+                 - what you fixed (file + one-line reason each)
+                 - which `ci-failures.log` entries (if any) the fix
+                   targets
+                 - what you verified as already correct
+                 - anything you intentionally left alone, with reason
+               If nothing needed changing this iteration, post a brief
+               comment saying so.
+
+            ## Constraints
+
             - Never invent APIs. Cite an upstream commit or source file
-              for every factual claim.
+              for every factual claim, in both fixes and the comment.
             - Frontmatter `description` must remain <= 500 chars.
-            - Never modify hooks or settings outside of what was
-              explicitly requested.
-            - If you cannot complete the review safely, post a comment
-              explaining why and exit non-zero so auto-merge does not
-              fire.
+            - Never modify hooks or settings outside of what the bot PR
+              already touches. If a fix would require changes outside
+              the PR scope, leave it, note it in the comment, continue.
+            - If you cannot fix a flagged issue safely (genuine
+              ambiguity, missing upstream source, conflicting signals),
+              post a comment explaining why and exit non-zero so
+              auto-merge does not fire.
 
   mentions:
     name: respond to @claude mentions
