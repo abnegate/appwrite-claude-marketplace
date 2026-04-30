@@ -27,6 +27,7 @@ Dependency-free input validation primitives with a uniform `isValid/getDescripti
 - `Text`'s constructor is `new Text(int $length, int $min = 1, array $allowList = [])` — **length is max, second arg is min** (named args strongly recommended)
 - `WhiteList` is case-sensitive by default; pass `strict: true` to also compare types
 - `Domain` vs `Hostname` vs `Host`: `Domain` validates TLD-bearing names, `Hostname` allows single labels (localhost), `Host` accepts both plus IPs
+- **`Domain` and `URL` accept an `$allowEmpty` flag** — `new Domain(restrictions: [], hostnames: true, allowEmpty: true)` and `new URL(allowedSchemes: [], allowEmpty: true)` treat `''` (and `null` for URL) as valid. Use this for optional form fields instead of wrapping in `Nullable` plus a separate empty-string branch
 - `JSON` validator only checks syntax, not schema — don't use it for API payload validation
 - `ArrayList` validates each element with a sub-validator but calls `isArray() = true` — callers must check this to decide whether to run element-wise
 

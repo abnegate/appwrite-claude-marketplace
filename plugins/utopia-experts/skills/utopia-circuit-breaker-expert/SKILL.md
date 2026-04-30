@@ -9,7 +9,7 @@ description: Expert reference for utopia-php/circuit-breaker — three-state bre
 Three-state circuit breaker (`CLOSED`/`OPEN`/`HALF_OPEN`) for short-circuiting calls to flaky downstream dependencies. State lives in-process by default but can be shared across workers via Redis or `Swoole\Table` adapters. Telemetry is opt-in via `utopia-php/telemetry`.
 
 ## Public API
-- `Utopia\CircuitBreaker\CircuitBreaker(threshold=3, timeout=30, successThreshold=2, ?Adapter $cache, cacheKey='default', ?Telemetry, metricPrefix='')` — `call(callable $open, callable $close, ?callable $halfOpen)`, `setTelemetry(Telemetry)`
+- `Utopia\CircuitBreaker\CircuitBreaker(threshold=3, timeout=30, successThreshold=2, ?Adapter $cache, cacheKey='default', ?Telemetry, metricPrefix='')` — `call(callable $open, callable $close, ?callable $halfOpen)`, `setTelemetry(Telemetry)`, `trip()` (force OPEN), `getState()`, `getFailureCount()`, `getSuccessCount()`, `isOpen()/isClosed()/isHalfOpen()`
 - `Utopia\CircuitBreaker\CircuitState` — enum: `CLOSED|OPEN|HALF_OPEN`
 - `Utopia\CircuitBreaker\Adapter` — interface: `get(key)`, `set(key, value)`, `increment(key, by=1)`, `delete(key)`
 - `Utopia\CircuitBreaker\Adapter\Redis(object $redis, prefix='breaker:')` — duck-typed; wraps any client exposing `get/set/incrBy/del`
@@ -31,6 +31,7 @@ Three-state circuit breaker (`CLOSED`/`OPEN`/`HALF_OPEN`) for short-circuiting c
 - **`SwooleTable::createTable()` requires `ext-swoole`** at create-time; running it under FPM throws. The adapter itself is duck-typed too — you can swap a fake table in tests
 - **Half-open probes can stampede** — without rate limiting, every worker hitting HALF_OPEN at once will flood the recovering service. Prefer `successThreshold: 1` with low traffic, higher with high
 - **No tripping by latency** — only thrown exceptions count as failures. A 30-second timeout is "success" unless your `$close` throws on slow responses
+- **`trip()` forces OPEN out-of-band** — idempotent (re-tripping refreshes `openedAt` and re-emits gauges, no extra `transitions` recorded). Use it from a circuit-management endpoint or admin task to take a flapping dependency offline manually; the breaker still self-heals after `timeout` via the normal HALF_OPEN probe
 
 ## Appwrite leverage opportunities
 - **Wrap every external integration** in Functions/Messaging/OAuth providers with one breaker per provider — currently a single misbehaving SMTP provider can saturate the messaging worker pool. `cacheKey: "email-{provider}"` plus `Adapter\Redis` shares trip state across workers
