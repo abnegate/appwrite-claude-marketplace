@@ -1,56 +1,77 @@
 # Sync notes for reviewer
 
-## utopia-php drift resolved
+## utopia-php drift — no scaffolding warranted
 
-**Added 6 skills** scaffolded from upstream READMEs and source via `gh api`:
+`bin/marketplace sync` flagged one missing skill and one archived upstream.
+Resolution below; no skills were added or removed in this PR.
 
-| Skill | Repo | Category |
-| --- | --- | --- |
-| `utopia-cdn-expert` | `utopia-php/cdn` | `storage-io` |
-| `utopia-circuit-breaker-expert` | `utopia-php/circuit-breaker` | `runtime` |
-| `utopia-database-proxy-expert` | `utopia-php/database-proxy` | `data` |
-| `utopia-lock-expert` | `utopia-php/lock` | `messaging-async` |
-| `utopia-swoole-expert` | `utopia-php/swoole` (archived) | `runtime` |
-| `utopia-view-expert` | `utopia-php/view` | `utilities` |
+### `utopia-clickhouse-expert` — phantom missing skill, NOT scaffolded
 
-Notes on individual scaffolds:
+The drift report lists `utopia-php/clickhouse` as upstream-only (missing
+locally) with empty description and 0 stars. The repository **does not
+exist on GitHub**:
 
-- **`utopia-cdn-expert`** — `main` is currently a stub (README only). The actual `Cache` / `Certificates` API surface (Cloudflare + Fastly adapters, FastlyTls provider) lives on `feat/init-cdn-providers`. The skill is grounded against that branch and flags the `main`-vs-feature gap explicitly.
-- **`utopia-swoole-expert`** — repo is archived upstream; superseded by `utopia-php/http`'s first-party Swoole adapter. Skill is scaffolded with a clear "ARCHIVED" header and a migration path so it remains useful for legacy services pinned to `utopia-php/framework: 0.33.*`. After scaffolding, the next `bin/marketplace sync` will (correctly) report it under `utopia.archived` — that is intentional, not a regression.
+- `gh api repos/utopia-php/clickhouse` → HTTP 404 (Not Found)
+- `gh api orgs/utopia-php/repos --paginate` returns 60 names; none match
+  `click*`. The 5 blocklist entries reduce that to 55 library repos,
+  matching `local_count` exactly. The drift's `upstream_count: 56` is
+  off-by-one — likely a transient API blip that briefly surfaced a
+  phantom slug at sync time.
+- `gh api search/repositories?q=utopia-php+clickhouse` → empty result.
 
-**Deleted 1 orphan**:
+Per the standing rule "do not fabricate APIs", scaffolding a skill with
+no public source to ground against is not safe. A previous PR (see git
+history of `PR_NOTES.md` at `3cd0419`) already removed a stub skill of
+this name for the same reason. Leaving this entry unactioned; the next
+sync will re-emit it as missing for as long as the upstream listing
+ghost-includes it.
 
-- **`utopia-clickhouse-expert`** — the upstream repo `utopia-php/clickhouse` does not exist (HTTP 404; nothing close in the org either — only `analytics` and `usage` are remotely adjacent). The skill described an API surface with no public source to ground against, which is a hallucination risk on every consult. Removed from `plugins/utopia-experts/skills/` and from `Catalogue::all()` (`misc` category).
+### `utopia-swoole-expert` — archived upstream, KEPT
 
-`Catalogue::all()` and the two count assertions in `tests/Index/CatalogueTest.php` / `tests/Index/GeneratorTest.php` were updated from `50` to `55`. `bin/marketplace index`, `bin/marketplace validate`, and `vendor/bin/phpunit` all green.
+`utopia-php/swoole` is archived upstream (superseded by `utopia-php/http`'s
+first-party Swoole adapter). The local skill already documents this in its
+frontmatter description, in a top-of-file `(archived)` heading, and ships
+a five-step migration path to `utopia-php/http`. It remains useful for
+maintaining services pinned to `utopia-php/framework: 0.33.*`. Keeping
+it; the next sync will continue to (correctly) report it under
+`utopia.archived`.
 
 ## Untracked upstream — not actioned here
 
-These are listed for visibility only — the **commit-scan workflow** (`.github/workflows/scan-commits.yml`) owns the judgement on whether any of them should become a tracked skill. No scaffolding was done here.
+Listed for visibility only. The commit-scan workflow
+(`.github/workflows/scan-commits.yml`) owns the judgement on whether any
+of these should become a tracked skill.
 
-### `appwrite/*` — 11 new or untracked
+### `appwrite/*` — 12 new or untracked
 
 - `appwrite/integration-for-digitalocean` (20★)
 - `appwrite/integration-for-gitpod` (40★)
-- `appwrite/mcp-for-api` (66★) — Appwrite's MCP server for backend operations
-- `appwrite/mcp-for-docs` (9★) — Appwrite's MCP server for browsing docs
+- `appwrite/mcp-for-api` (68★) — Appwrite's MCP server for backend ops
+- `appwrite/mcp-for-docs` (9★) — Appwrite Docs MCP server
 - `appwrite/sdk-for-cli` (98★) — official Appwrite CLI
 - `appwrite/sdk-for-console` (21★)
 - `appwrite/sdk-for-console-php`
 - `appwrite/sdk-for-dotnet` (128★)
-- `appwrite/sdk-for-react-native` (4292★)
+- `appwrite/sdk-for-react`
+- `appwrite/sdk-for-react-native` (4289★)
 - `appwrite/sdk-for-rust` (31★)
 - `appwrite/sdk-for-svelte` (75★) — pinned to Appwrite 0.9, refactor planned
 
-### `appwrite-labs/*` — 2 visible repos
+### `appwrite-labs/*` — 66 visible repos
 
-- `appwrite-labs/.github`
-- `appwrite-labs/php-k8s` — unofficial PHP Kubernetes client
+Mostly cloud infra (`cloud`, `edge`, `infrastructure`, `terraform-modules`),
+sidecars (`sidecar-for-runtime-*`, `sidecar-for-sql-api`, `sidecar-for-storage-autoscale`, etc.),
+docker images (`docker-mysql`, `docker-postgresql`, `docker-proxysql`, `docker-geo`, `docker-metabase`),
+internal SDKs (`sdk-for-manager`, `sdk-for-platform`, `sdk-for-console-imagine`),
+and product/ops repos (`growth`, `incidents`, `domain-rankings`, `uptime-monitors`,
+`secrets-management`, `helm-charts`, `pwned`, `php-k8s`).
 
-### `open-runtimes/*` — 16 visible repos
+### `open-runtimes/*` — 17 visible repos
 
-- `open-runtimes/.github`, `examples`, `executor` (34★), `open-runtimes` (274★), `orchestrator`, `proxy`
-- 10 `types-for-*` repos: `cpp`, `dart`, `dotnet`, `go`, `java`, `kotlin`, `node`, `python`, `rust`, `swift`
+- `open-runtimes/.github`, `docker-base`, `examples`, `executor` (34★),
+  `open-runtimes` (274★), `orchestrator`, `proxy`
+- 10 `types-for-*` repos: `cpp`, `dart`, `dotnet`, `go`, `java`, `kotlin`,
+  `node`, `python`, `rust`, `swift`
 
 ## Reproduce locally
 
