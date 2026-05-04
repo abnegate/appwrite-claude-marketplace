@@ -20,7 +20,7 @@ Plus wire-protocol parsers (`Parser\SQL`, `MySQL`, `PostgreSQL`, `MongoDB`) that
 - **`Statement`** — `(string $query, array $bindings, bool $readOnly)` returned by every Builder terminal call.
 - **`ParsedQuery`** — typed DTO from `Query::groupByType($queries)` with `filters`, `selections`, `aggregations`, `groupBy`, `having`, `joins`, `unions`, `limit`, `offset`, `cursor`, `cursorDirection`, `distinct`. Replaces the old loose array shape.
 - **Builder** — `Utopia\Query\Builder` (abstract) + `Utopia\Query\Builder\SQL` (MySQL/MariaDB/PostgreSQL/SQLite share this), and concretes `MySQL`, `MariaDB`, `PostgreSQL`, `SQLite`, `ClickHouse`, `MongoDB`. Fluent surface: `select`, `from`, `filter([Query, …])`, `queries([…])` (batch all), `whereRaw`, `whereColumn`, `having`, `groupBy`, `groupByModifiers`, `joins` / `innerJoin` / `leftJoin` / `crossJoin`, `unions`, `cte`, `window`, `case_`, `lock`, `forUpdate`/`Share`, `transaction`, `explain`, `aggregate*` family, conditional aggregates, string aggregates, sequences (`nextVal`/`currVal` MariaDB+PG), composite-PK upsert, `insert`/`update`/`delete`/`upsert`. Hooks via `Hook::*` for observability/rewriting.
-- **Schema** — `Utopia\Query\Schema\Table` (renamed from `Blueprint`) with `column`, `primary(array)` (composite PKs), `index`, `unique`, `fulltext`, `foreignKey`, `check`, `generatedAs`, `partition`, `comment`, `view`, `procedure`, `trigger`. Per-dialect classes: `Schema\MySQL`, `MariaDB`, `PostgreSQL` (incl. SERIAL types), `SQLite`, `ClickHouse` (MergeTree engine family + TTL), `MongoDB`.
+- **Schema** — fluent table builder. Obtain a `Table` via `(new Schema\MySQL())->table('users')`, then chain typed column methods (`id`, `string`, `text`, `mediumText`, `longText`, `integer`, `bigInteger`, `serial`/`bigSerial`/`smallSerial`, `float`, `boolean`, `datetime`, `timestamp`, `json`, `binary`, `enum`, `point`, `linestring`, `polygon`, `vector`, `timestamps()`) — each returns a `Column` exposing modifiers (`nullable`, `default`, `unsigned`, `unique`, `primary`, `autoIncrement`, `after`, `comment`, `collation`, `check`, `generatedAs` + `stored`/`virtual`, `ttl` (ClickHouse), `userType` (PostgreSQL)). Table-level fluent ops: `index()`, `uniqueIndex()`, `fulltextIndex()`, `spatialIndex()`, `foreignKey()`, `primary([...])` (composite PKs), `check()`, `partitionByRange/List/Hash()`, `engine()`, `orderBy()`, `ttl()`, `settings()` (ClickHouse). Terminal `create()`/`createIfNotExists()`/`alter()`/`drop()`/`dropIfExists()`/`truncate()`/`rename()` returns a `Statement`. Per-dialect classes: `Schema\MySQL`, `MariaDB`, `PostgreSQL` (incl. SERIAL types, extensions, custom types, sequences, collations), `SQLite`, `ClickHouse` (10 engines, TTL, skip-index algorithms via `IndexAlgorithm` enum, table-level SETTINGS), `MongoDB`.
 - **Parsers** — `Utopia\Query\Parser\{SQL,MySQL,PostgreSQL,MongoDB}` ingest wire-format strings/commands and return a `Statement` plus a `ParsedQuery`-shaped tree for inspection or rewriting.
 - **AST** — `Utopia\Query\AST\Walker` with original-node-preserving traversal (returns the same node when no children change — keeps memory churn down on hot paths).
 
@@ -35,6 +35,8 @@ Plus wire-protocol parsers (`Parser\SQL`, `MySQL`, `PostgreSQL`, `MongoDB`) that
 ## Gotchas
 - **Two `Query` classes still exist in the Appwrite stack** — `Utopia\Query\Query` (this lib, the canonical wire format) and the legacy `Utopia\Database\Query`. Method names are identical, classes are not. Pick one namespace per service; `utopia-php/database` is migrating but still imports the legacy one in many call sites
 - **Renamed types** — `Plan` → `Statement`, `GroupedQueries` → `ParsedQuery`, `Blueprint` → `Table`. Anything pinning the old names will not autoload after upgrading
+- **Schema builder is fluent-only** — there is no `Table::column($name, $type)` shortcut; you must call the typed method (`->string('name')`, `->bigInteger('id')`, …) or `addColumn(name, ColumnType)` for the dynamic case. Mixing column-level `->primary()` with `Table::primary([...])` throws `ValidationException`. `serial`/`bigSerial`/`smallSerial` throw `UnsupportedException` on ClickHouse and MongoDB
+- **ClickHouse skip-index algorithm args render verbatim** — `algorithmArgs` for `IndexAlgorithm::Set` / `BloomFilter` / `NgramBloomFilter` / `TokenBloomFilter` are emitted into DDL without parameter binding. Source them from developer-controlled config only. `MinMax` and `Inverted` reject `algorithmArgs` (`ValidationException`). Engine `SETTINGS` keys must match `[A-Za-z_][A-Za-z0-9_]*` and string values are restricted to `[A-Za-z0-9_.\-+/]*`
 - **`Query::contains()` is deprecated** — split into `containsString` (LIKE substring) and `containsAny` (array/relation membership). The two were silently doing different things in the legacy Database\Query
 - **`equal` always takes an array** for the values argument (`Query::equal('status', ['active'])`), even for one match. Scalar passes through `IN (?)` on most dialects but the strict ones raise
 - **`cursorAfter`/`cursorBefore` are mutually exclusive** — `groupByType` keeps whichever appears later. Pass one
@@ -92,20 +94,26 @@ $pdo->prepare($stmt->query)->execute($stmt->bindings);
 // $stmt->readOnly === true → safe to route to a read replica
 ```
 
-### DDL with composite primary key + ClickHouse TTL
+### DDL with composite primary key + ClickHouse skip-indexes + SETTINGS
 ```php
 use Utopia\Query\Schema\ClickHouse as Schema;
+use Utopia\Query\Schema\ClickHouse\Engine;
+use Utopia\Query\Schema\ClickHouse\IndexAlgorithm;
 
-$table = (new Schema())
-    ->table('events')
-    ->column('tenantId', 'String')
-    ->column('eventId', 'UUID')
-    ->column('payload', 'String')
-    ->column('createdAt', 'DateTime')
-    ->primary(['tenantId', 'eventId'])
-    ->engine('MergeTree')
+$schema = new Schema();
+
+$stmt = $schema->table('events')
+    ->string('tenantId')
+    ->string('eventId')
+    ->string('payload')
+    ->datetime('createdAt')
+    ->primary(['tenantId', 'eventId'])      // composite PK
+    ->engine(Engine::MergeTree)
     ->orderBy(['tenantId', 'createdAt'])
     ->ttl('createdAt + INTERVAL 90 DAY')
+    // BloomFilter — high-cardinality lookup column
+    ->index(['tenantId'], algorithm: IndexAlgorithm::BloomFilter)
+    ->settings(['index_granularity' => 8192, 'allow_nullable_key' => true])
     ->create();
-// $table->query / $table->bindings — same Statement contract
+// $stmt->query / $stmt->bindings — same Statement contract
 ```
