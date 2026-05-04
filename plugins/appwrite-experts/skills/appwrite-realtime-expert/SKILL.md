@@ -82,10 +82,25 @@ The realtime server checks permissions before delivering events:
 
 1. Client opens WebSocket to `wss://{host}/v1/realtime`
 2. Authenticates via query param (`project` + session cookie)
-3. Sends subscription message with channel list
+3. Subscriptions are established **either** in the URL query (`?channels[]=…`, legacy `subscriptionMode = 'url'`) **or** dynamically via `subscribe`/`unsubscribe` messages on the open socket (`subscriptionMode = 'message'`, see below)
 4. Server registers channels for the connection — `Realtime::convertChannels($channels, $userId)` rewrites the literal `account` → `account.{userId}` and any `account.{action}` → `account.{userId}.{action}` (where `{action}` is in `SUPPORTED_ACTIONS`); illegal `account.{otherUserId}` variants are stripped. Guests keep the literal `account.{action}` form so the action filter still matches the broadcast `account.{action}` channel
 5. Events matching subscribed channels are pushed as JSON frames
 6. Connection closed on timeout, client disconnect, or server shutdown
+
+### Message-based subscription protocol
+
+`onMessage` (`app/realtime.php`) accepts JSON frames with a top-level `type` and `data`. Four types:
+
+| Type | Payload shape | Server response |
+|---|---|---|
+| `ping` | none | `{ "type": "pong" }` |
+| `authentication` | `{ "session": "<encoded session>" }` | `{ "type": "response", "data": { "to": "authentication", "success": true, "user": <Account model> } }` — re-resolves roles, calls `Realtime::rebindAccountChannels` to migrate guest `account.{action}` and prior-user `account.{oldUserId}[.…]` entries to the new user, then re-subscribes every existing subscription under the new role set |
+| `subscribe` | array (must be a list) of `{ subscriptionId?: string, channels: string[], queries?: string[] }` | `{ "type": "response", "data": { "to": "subscribe", "success": true, "subscriptions": [{ subscriptionId, channels, queries }, …] } }` — bulk-validated up front (one bad payload aborts the whole batch); `subscriptionId` is upserted, missing IDs get a fresh `ID::unique()`; queries are parsed via `Realtime::convertQueries` |
+| `unsubscribe` | array of `{ subscriptionId: string }` (non-empty) | `{ "type": "response", "data": { "to": "unsubscribe", "success": true, "subscriptions": [{ subscriptionId, removed }, …] } }` — every payload is validated before any removal so a late bad entry can't leave earlier removals half-applied |
+
+The `connected` frame the server sends on `onOpen` advertises the mode: when channels were passed in the URL the payload is `{ "type": "connected", "data": { channels, subscriptions: { index→subscriptionId }, user } }`; when the URL has no channels (message-mode), `channels` and `subscriptions` are empty and the client is expected to follow up with a `subscribe` message. Client SDKs that lean on this share a single WebSocket across `subscribe()`/`unsubscribe()`/`subscription.update()` calls and only tear it down on `realtime.disconnect()`.
+
+Errors during `onMessage` send `{ "type": "error", "data": { "code", "message" } }`; code `1008` (`REALTIME_POLICY_VIOLATION`) closes the connection, everything else stays open.
 
 ### `rebindAccountChannels` on auth changes
 
@@ -125,7 +140,8 @@ Wildcards are implicit — subscribing to `databases.db1.collections.col1.docume
 - The `account` channel receives events for the authenticated user only — not all users; the server rewrites the literal `account` to `account.{userId}` at subscribe time
 - **Subscribing to bare `functions.{action}` is a silent no-op** — `functions` is parent-only in `RESOURCE_LEAF_NAMES`. Use `functions.{functionId}.{action}`
 - **Action suffixes are restricted to `SUPPORTED_ACTIONS`** (create/update/upsert/delete) — any other suffix is ignored
-- Subscription changes require a new message — you can't dynamically add/remove channels on an existing subscription
+- **`subscribe`/`unsubscribe` payloads are bulk-validated up front** — a single bad entry rejects the whole batch with `REALTIME_MESSAGE_FORMAT_INVALID`; do not assume earlier entries in the same array were applied. `unsubscribe` requires a non-empty `subscriptionId` per entry
+- **Pre-auth channel state survives `authentication`** via `Realtime::rebindAccountChannels` — guest connections that subscribed to `account` (literal) or `account.{action}` will be re-pointed to the new user without losing the subscription. Don't manually unsubscribe and re-subscribe across an auth flip; the protocol does it for you
 - The realtime server has its own connection pool for database access (permission checking)
 - `reload_async: true` is critical for the realtime server — without it, SIGUSR1 kills WebSocket connections
 - Connection cleanup runs periodically via the Interval task (`cleanup_stale_executions` at 5-minute intervals)
