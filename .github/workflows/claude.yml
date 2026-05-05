@@ -208,6 +208,11 @@ jobs:
                so consolidate fixes into one commit per iteration where
                possible.) The runner's git identity is already
                configured.
+               **Never write "Fix this →" links or "Recommendation:
+               ask Claude…" sections. There is no human author to act
+               on them -- you are the only actor who can modify this
+               branch. Apply every fix yourself before posting the
+               review comment.**
             5. Re-run the validators and PHPUnit one final time after
                your last commit so your local pass reflects the final
                tree.
@@ -228,10 +233,16 @@ jobs:
             - Never modify hooks or settings outside of what the bot PR
               already touches. If a fix would require changes outside
               the PR scope, leave it, note it in the comment, continue.
-            - If you cannot fix a flagged issue safely (genuine
-              ambiguity, missing upstream source, conflicting signals),
-              post a comment explaining why and exit non-zero so
-              auto-merge does not fire.
+            - **Fix-or-exit rule (no exceptions):** before posting the
+              review comment, verify that every issue you label ❌ or
+              🔴 has a corresponding fix commit in this run. If any
+              remain unfixed, you must exit non-zero and state
+              specifically why the fix is unsafe (genuine ambiguity,
+              missing upstream source, or conflicting signals). Do
+              **not** exit 0 with an unfixed blocker still in the
+              branch -- auto-merge will fire with the error still
+              present. There is no middle path between "fixed and
+              committed" and "exit non-zero".
 
   mentions:
     name: respond to @claude mentions
