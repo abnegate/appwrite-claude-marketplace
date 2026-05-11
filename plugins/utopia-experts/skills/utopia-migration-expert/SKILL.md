@@ -14,6 +14,8 @@ Cross-service resource migration engine that extracts typed `Resource` objects f
 - `Utopia\Migration\Resource` (abstract) — typed domain objects (`TYPE_USER`, `TYPE_FILE`, `TYPE_DATABASE`, `TYPE_COLLECTION`, `TYPE_ROW`, etc.) with status state machine (`pending/processing/success/error/skipped/warning`)
 - `Resources\{Auth,Database,Storage,Functions,Sites,Messaging}\*` — concrete resource types
 - `Sources\{Appwrite,Supabase,NHost,Firebase,CSV,JSON}`, `Destinations\{Appwrite,Local,CSV,JSON}`
+- `Destinations\Appwrite::__construct(..., ?callable $getDatabaseDSN = null)` — opt-in resolver `(Database $resource): string` for the destination's `_databases.database` value. Without it, the row is written with `''` and the runtime falls back to the destination project's DSN. Critical for cross-host / cross-region Appwrite→Appwrite migrations: without it (pre-1.10.x), the source's DSN was written into destination metadata, opening pools to the wrong host
+- `OnDuplicate` enum + `SchemaAction` (Create/Tolerate/UpdateInPlace) — drives the re-migration path on `DestinationAppwrite`. `Skip` always tolerates existing schema; `Upsert` runs a per-resource spec-match guard (`databaseSpecMatches`/`tableSpecMatches`/`attributeSpecMatches`/`indexSpecMatches`) and only updates when the source `updatedAt` is strictly newer; `Fail` (default) lets the library throw `DuplicateException` as before. SDK-reachable changes go through `updateAttribute`/`updateRelationshipAttribute`; non-SDK shape changes (`type`/`array`/`signed`/`format`/`formatOptions`/`filters`, plus relationship structural fields) drop+recreate
 - `Cache` — in-memory resource registry shared across source and destination for ID remapping
 - `Warning`, `Exception` — non-fatal vs fatal reporting
 
@@ -29,6 +31,8 @@ Cross-service resource migration engine that extracts typed `Resource` objects f
 - `Local` destination is explicitly "testing only" per the README — do not use as a backup solution, it has no integrity check
 - Source `previousReport` is used to seed `pending` counts from a prior run, but no code ships to persist it — you're expected to save/load it yourself
 - Firebase source uses Firestore REST which aggressively rate-limits; set `getDatabasesBatchSize()` lower than 100 or expect 429s mid-migration
+- **Sentry routing** — `Migration\Exception` is now the library's marker for "user-facing migration error". The `import()` per-resource wrap records and re-throws; `create*()` paths convert ~15 user-error sites (duplicates, structure, unsupported defaults) to `setStatus + addError + return false` so they stay in the report and do **not** bubble. The row-flush block catches `DuplicateException`/`StructureException` and re-throws as `Migration\Exception` for the same reason. Workers should route exceptions via `instanceof Migration\Exception` — only library bugs and infra failures should reach Sentry
+- **Cross-host destination DSN** — never let the `_databases.database` row inherit the source DSN. Always pass a `getDatabaseDSN` resolver to `DestinationAppwrite` for cross-host or per-database-type setups (e.g. routing `documentsdb` and `vectorsdb` to dedicated DSNs); without one, the empty default is now safe
 
 ## Appwrite leverage opportunities
 - **Resumable migrations**: serialize `$transfer->getCache()` + `$source->previousReport` to Redis after every batch. On crash, rehydrate before `run()` — avoids re-uploading TBs of storage. The primitive is there (`previousReport`), just no wiring

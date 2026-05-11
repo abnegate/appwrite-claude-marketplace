@@ -19,7 +19,7 @@ Lightweight library for building command-line applications on top of the Utopia 
 - `Utopia\Console` (companion) — colored output helpers (`success`, `error`, `info`, `warning`)
 
 ## Core patterns
-- **Task DSL**: `$cli->task('name')->param(...)->inject(...)->action(fn(...) => ...)` mirrors the framework's HTTP route API
+- **Task DSL**: `$cli->task('name')->param(...)->inject(...)->action(fn(...) => ...)` mirrors the framework's HTTP route API. `param()` accepts a trailing `array $aliases = []` so a flag can be invoked under multiple names (e.g. `--projectId` ↔ `--project-id`) — the canonical name is matched first, then each alias against the parsed argv
 - **Hook chain** runs init hooks → task action → shutdown hooks; any thrown `Throwable` triggers error hooks in order
 - **Resource injection** via shared static `CLI::setResource()` — same mechanism as Utopia HTTP app
 - **Swoole adapter enables `Swoole\Runtime::enableCoroutine()`** so blocking I/O inside tasks becomes async

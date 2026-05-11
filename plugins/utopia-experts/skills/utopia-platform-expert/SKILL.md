@@ -12,8 +12,11 @@ Object-oriented scaffolding that turns Utopia route/task/worker definitions into
 - `Utopia\Platform\Platform` — root; holds a core `Module`, extra modules, a `CLI`, and a `Queue\Server`. `init('http'|'Task'|'Worker'|'GraphQL', $params)` wires actions onto the underlying Utopia library
 - `Utopia\Platform\Module` — bag of `Service` instances, queried by service type during `init()`
 - `Utopia\Platform\Service` — typed container of `Action`s; `TYPE_HTTP|GRAPHQL|TASK|WORKER`
-- `Utopia\Platform\Action` (abstract) — one endpoint/task/job; `type` (`TYPE_DEFAULT`/`INIT`/`SHUTDOWN`/`ERROR`/`OPTIONS`/`WORKER_START`), params, injections, labels, groups, callback
+- `Utopia\Platform\Action` (abstract) — one endpoint/task/job; `type` (`TYPE_DEFAULT`/`INIT`/`SHUTDOWN`/`ERROR`/`OPTIONS`/`WORKER_START`), params, injections, labels, groups, callback. `$this->param(...)` forwards to `Servers\Hook::param()` and now accepts a trailing `array $aliases = []` for fallback parameter names
 - `Utopia\Platform\Scope\HTTP` — trait mixed into `Action`, exposes `httpPath`, `httpMethod`, `httpAliasPath`
+
+## Compatibility
+- Requires `utopia-php/http: ^2.0` (was `^1.x`). The 2.0 release split adapter container access into `resources()` (static) + `context()` (per-request) and removed `Http::setResource`/`getResource` — when subclassing `Action` for HTTP services, read injected resources from the request context, not via removed `Http::*` shims. PHP 8.1/8.2 are no longer supported.
 
 ## Core patterns
 - **Type-dispatched init** — `Platform::init('http')` iterates every module, pulls services of that type, and translates `Action`s into `Http::get/post/init/error` calls. Same method works for `Task` (CLI) and `Worker` (Queue)

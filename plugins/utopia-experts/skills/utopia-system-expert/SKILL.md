@@ -13,7 +13,9 @@ Zero-dependency static helper for querying host CPU/memory/disk/network/IO and a
 - `System::getArch()` / `getArchEnum()` — raw uname `m` or normalised enum (X86, ARM64, ARMV7, ARMV8, PPC)
 - `System::isArm()` / `isPPC()` / `isX86()` — boolean arch predicates
 - `System::getHostname()` / `getEnv(string $key)` — host identity helpers
-- `System::getCPUCores()` / `getCPUUsage(int $duration)` — core count + `/proc/stat` delta sampling
+- `System::getCPU(): float` — CPU capacity that honours cgroup v2 (`/sys/fs/cgroup/cpu.max`) and v1 (`cpu.cfs_quota_us`/`cpu.cfs_period_us`), so `--cpus=0.5` returns `0.5`. Also honours cpuset pinning (`/sys/fs/cgroup/cpuset.cpus.effective`); when a quota and a cpuset are both configured, the lower wins. Falls back to host physical core count when no cgroup limit is set
+- `System::getCPUCores(): int` — **deprecated** in favour of `getCPU()`; ignores cgroup limits so misreports capacity inside containers
+- `System::getCPUUsage(int $duration)` — `/proc/stat` delta sampling
 - `System::getMemoryTotal()` / `getMemoryFree()` — `/proc/meminfo` on Linux, sysctl-based on macOS
 - `System::getDiskTotal()` / `getDiskFree()` — wraps `disk_total_space` / `disk_free_space`
 - `System::getIOUsage(int $duration)` / `getNetworkUsage(int $duration, string $interface)` — Linux-only sampling via `/proc/diskstats` and `/proc/net/dev`
