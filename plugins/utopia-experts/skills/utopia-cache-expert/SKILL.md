@@ -12,7 +12,7 @@ Unified TTL-aware key/value cache facade over Redis, RedisCluster, Memcached, Ha
 - `Utopia\Cache\Cache` — facade: `load($key, $ttl, $hash = '')`, `save`, `list`, `purge`, `flush`, `ping`, `getSize`; toggles `caseSensitive`
 - `Utopia\Cache\Adapter` (interface) — contract plus `setMaxRetries(0-10)` / `setRetryDelay(ms)`
 - `Adapter\Redis`, `Adapter\RedisCluster` — ext-redis wrappers with reconnect-on-failure
-- `Adapter\Memcached`, `Adapter\Hazelcast`, `Adapter\Filesystem`, `Adapter\Memory`, `Adapter\None`
+- `Adapter\Memcached`, `Adapter\Hazelcast`, `Adapter\Filesystem`, `Adapter\Memory`, `Adapter\None`. `Filesystem(string $path, bool $streaming = false)` — when `$streaming = true`, `load()` returns a readable file handle (`fopen($file, 'rb')`) for cache hits instead of slurping the whole file via `file_get_contents`. Caller is responsible for `fclose()`. Useful for large blobs (built bundles, image previews) that don't need to live in PHP memory
 - `Adapter\Sharding` — consistent-hash fan-out across N adapters
 - `Adapter\Pool` — wraps `utopia-php/pools` to pull a fresh connection per op (Swoole-friendly)
 

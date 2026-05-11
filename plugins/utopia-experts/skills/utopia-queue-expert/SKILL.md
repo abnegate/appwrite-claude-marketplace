@@ -19,7 +19,7 @@ Redis/AMQP-backed job queue with a Swoole/Workerman worker server, DI-driven job
 - `Utopia\Queue\Error\Retryable` + `Result\{Commit, NoCommit}` — explicit ack semantics
 
 ## Core patterns
-- **Router-style hook registration**: `$server->job()->inject('message')->action(fn(Message $m) => ...)` backed by `utopia-php/di` container
+- **Router-style hook registration**: `$server->job()->inject('message')->action(fn(Message $m) => ...)` backed by `utopia-php/di` container. `param()` (inherited from `Servers\Hook`) accepts a trailing `array $aliases = []` so a job payload field can be read under multiple names — useful when an enqueuer emits a renamed key while consumers haven't redeployed
 - **Dual-role brokers** — `Redis` and `AMQP` both implement `Publisher` + `Consumer`, so the same class enqueues and dequeues
 - **`Broker\Pool`** wraps multiple brokers for connection pooling via `utopia-php/pools`
 - **Redis broker uses namespaced keys**: `{ns}.queue.{name}`, `{ns}.jobs.{name}.{pid}`, `{ns}.processing.{name}`, `{ns}.stats.{name}.*` with a `jobTtl` lease

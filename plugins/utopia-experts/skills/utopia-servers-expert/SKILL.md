@@ -10,7 +10,7 @@ Shared base class providing static lifecycle registries (init/shutdown/error/sta
 
 ## Public API
 - `Utopia\Servers\Base` — abstract parent of `Http\Http`, `CLI\CLI`, `Queue\Server`; holds `$init`/`$shutdown`/`$errors`/`$start`/`$end` Hook registries and a `Container` reference
-- `Utopia\Servers\Hook` — fluent hook/route descriptor: `param`, `inject`, `label`, `groups`, `desc`, `action`
+- `Utopia\Servers\Hook` — fluent hook/route descriptor: `param`, `inject`, `label`, `groups`, `desc`, `action`. `param()` accepts a trailing `array $aliases = []` for fallback parameter names — `prepare()` looks up the canonical key first, then walks aliases against both `$requestParams` and `$values`
 - `Utopia\Servers\Exception` — thrown for missing params, validator failures, and invalid validator instances
 
 ## Core patterns

@@ -18,6 +18,7 @@ Adapter-based CRUD/query abstraction over SQL (MariaDB/MySQL/Postgres/SQLite), M
 - `Utopia\Database\Mirror` — dual-write wrapper; writes to source + optional destination with filters + error callbacks (zero-downtime migrations)
 - `Utopia\Database\Validator\Authorization` — role-based ACL input; `addRole()`, `skip()`, reset
 - `Utopia\Database\Helpers\{ID,Permission,Role}` — ID generation (`ID::unique`, `ID::custom`), permission string builders (`Permission::read(Role::any())`)
+- `Database::VAR_BIGINT = 'bigint'` — 64-bit signed/unsigned integer attribute, mapped per adapter (`getLimitForBigInt` / `getSupportForUnsignedBigInt`). Defaults are validated through `Utopia\Database\Validator\BigInt`/`BigIntValidator::isIntegerString` so string defaults like `"9223372036854775807"` survive the type round-trip; `signed` is preserved through `validateDefaultTypes`. `normalizeBigIntSize` zeroes the size column for bigints (the type is fixed-width). Use over `VAR_INTEGER` whenever a column may exceed 32-bit range — Stripe/Plaid IDs, ClickHouse rowcounts, file-size accumulators
 - `Utopia\Database\Change` / `Operator` — change tracking and atomic update operators
 
 ## Core patterns
