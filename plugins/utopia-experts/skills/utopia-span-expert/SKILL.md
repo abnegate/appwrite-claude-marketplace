@@ -10,12 +10,15 @@ Minimal, Swoole-coroutine-safe span tracer: create a span, attach scalar attribu
 
 ## Public API
 - `Utopia\Span\Span` — static facade + instance:
-  - statics: `setStorage`, `addExporter`, `resetExporters`, `resetStorage`, `reset`, `init`, `current`, `add`, `traceparent`
+  - statics: `setStorage(?Storage)`, `setExporters(Exporter ...$exporters)` (replaces all), `init(action, ?traceparent)`, `current`, `add(key, value)`, `traceparent()`
   - instance: `set`, `get`, `getAttributes`, `getAction`, `setError`, `getError`, `getTraceparent`, `finish(?string $level = null, ?Throwable $error = null)`
 - `Utopia\Span\Storage\Storage` — storage interface
 - `Utopia\Span\Storage\{Memory, Coroutine, Auto}` — per-runtime context containers
-- `Utopia\Span\Exporter\Exporter` — single-method interface (`export(Span $span)`)
-- `Utopia\Span\Exporter\{Stdout, Pretty, Sentry, None}`
+- `Utopia\Span\Exporter\Exporter` — two-method interface: `export(Span $span): void` plus `sample(Span $span): bool` (the sampler now lives on the exporter, not as a separate `addExporter()` arg)
+- `Utopia\Span\Exporter\{Stdout, Pretty, Sentry, None}` — each exporter takes its sampler closure via constructor:
+  - `Stdout(?Closure $sampler = null, int $maxTraceFrames = 3)`
+  - `Pretty(?Closure $sampler = null)`
+  - `Sentry(?Closure $sampler = null, string $dsn, ?string $environment = null, ?string $release = null, ?string $serverName = null, ?Closure $classifier = null)` — DSN is mandatory and validated at construct time (`InvalidArgumentException` on missing/invalid public key, host, or project ID). `classifier` decides whether each attribute lands in `Tag`, `Context`, etc. via the `Utopia\Span\Exporter\SentryField` enum
 
 ## Core patterns
 - **Single flat attribute map, scalars only** — no nested span tree, one span per operation, IDs make the trace
@@ -27,7 +30,9 @@ Minimal, Swoole-coroutine-safe span tracer: create a span, attach scalar attribu
 
 ## Gotchas
 - **"Flat span" model is not OpenTelemetry-compatible** — there's no span parent/child tree within a process, only a trace_id link; if you need proper nested spans you'll outgrow this quickly
-- **Static state on the `Span` class** (`$storage`, `$exporters`) — tests must call `Span::reset()` or share state leaks across cases
+- **Static state on the `Span` class** (`$storage`, `$exporters`) — tests must call `Span::setStorage(null)` and `Span::setExporters()` with zero args to clear, or static state leaks across cases. The previous `addExporter` / `resetExporters` / `reset` helpers were removed in 3.x (PR #5)
+- **`Sentry` constructor throws** on a missing/invalid DSN — wrap construction in a feature flag so a misconfigured staging env doesn't kill boot. Stdout/Pretty are safe to leave wired by default
+- **Output attribute ordering changed**: `Stdout` and `Pretty` exporters now print `level` before `action` (PR #6) — log parsers keyed on column position will need to update
 - Sentry exporter skips non-error spans by design — don't rely on it for perf tracing
 - Only scalars allowed as attribute values — arrays/objects must be JSON-encoded by the caller; silently no-ops if you violate this after serialization
 
@@ -42,10 +47,13 @@ Minimal, Swoole-coroutine-safe span tracer: create a span, attach scalar attribu
 use Utopia\Span\{Span, Storage, Exporter};
 
 Span::setStorage(new Storage\Auto());
-Span::addExporter(new Exporter\Stdout());
-Span::addExporter(
-    new Exporter\Sentry(getenv('_APP_SENTRY_DSN')),
-    sampler: fn (Span $s) => $s->getError() !== null || $s->get('span.duration') > 5.0,
+Span::setExporters(
+    new Exporter\Stdout(),
+    new Exporter\Sentry(
+        sampler: fn (Span $s) => $s->getError() !== null || $s->get('span.duration') > 5.0,
+        dsn: getenv('_APP_SENTRY_DSN'),
+        environment: getenv('_APP_ENV'),
+    ),
 );
 
 $span = Span::init('http.request', $request->getHeader('traceparent'));

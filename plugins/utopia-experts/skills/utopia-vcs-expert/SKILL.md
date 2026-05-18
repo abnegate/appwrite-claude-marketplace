@@ -12,7 +12,7 @@ Webhook-driven Git provider abstraction for creating repositories, branches, PRs
 - `Utopia\VCS\Adapter` — root abstract
 - `Utopia\VCS\Adapter\Git` — Git-specific abstract
 - **5 Git adapters**: `Adapter\Git\GitHub`, `GitLab`, `Gitea`, `Gogs`, `Forgejo` (the README's "only GitHub" table is stale — the source tree ships all 5). **GitHub and GitLab are at parity** for the full surface (repos, branches, content, files, trees, languages, PRs, comments, webhooks, branch listings, latest/named commit, commit status); Gitea/Gogs/Forgejo share their own implementation lineage
-- Key methods: `initializeVariables()`, `createRepository()`, `createBranch()`, `createFile()`, `createPullRequest()`, `createWebhook()`, `createComment()`/`updateComment()`, `getPullRequest()`, `getPullRequestFiles()`, `getPullRequestFromBranch()`, `listBranches()`, `getCommit()`, `getLatestCommit()`, `updateCommitStatus()`, `createTag()`, plus repo/tree/content reads
+- Key methods: `initializeVariables()`, `createRepository()`, `createBranch($owner, $repo, $newBranchName, $oldBranchName)` (creates a new branch from an existing one — abstract on `Adapter\Git`, was previously only implemented on GitLab/Gitea; GitHub adapter now implements it via `POST /repos/.../git/refs`), `createFile()`, `createPullRequest()`, `createWebhook()`, `createComment()`/`updateComment()`, `getPullRequest()`, `getPullRequestFiles()`, `getPullRequestFromBranch()`, `listBranches($owner, $repo, int $perPage = 100, int $page = 1)` — single-page fetch with explicit `page` cursor (no more internal full-list loop; GitHub clamps `perPage` to `[1, 100]`), `getCommit()`, `getLatestCommit()`, `updateCommitStatus()`, `createTag()`, plus repo/tree/content reads
 
 ## Core patterns
 - **GitHub App auth**: `initializeVariables($installationId, $privateKey, $githubAppId)` generates a short-lived JWT via `adhocore/jwt`, exchanges it for an installation access token, caches it in `utopia-php/cache` until expiry
@@ -27,6 +27,8 @@ Webhook-driven Git provider abstraction for creating repositories, branches, PRs
 - **GitHub webhook signature verification (`X-Hub-Signature-256`, HMAC-SHA256) is NOT provided** by the library — you verify in your Appwrite route before handing to VCS handlers
 - `GITHUB_APP_ID` and `installationId` are strings in the API but numeric in GitHub's UI — passing integers may break JWT claims (`iss` must be string)
 - **No rate-limit handling** — GitHub App installations have 5,000 req/hr shared; bulk operations (import 100 repos) will 403 without backoff
+- **`listBranches()` no longer auto-paginates** (PR #98) — it returns at most `perPage` branches for a single page. Callers walking large repos (>100 branches) must loop with incrementing `page` and stop when the response shrinks below `perPage`. Tests should use `assertEqualsCanonicalizing` because the GitHub branch list is not order-stable
+- **`utopia-php/cache: ^3.0`** is now the required cache constraint (PR #104). The 2.x → 3.x boundary adds `touch()` to the `Adapter` contract, so a host project pinning cache 2.x will fail composer resolution
 
 ## Appwrite leverage opportunities
 - **Appwrite Functions VCS integration**: use `createWebhook()` on deploy-key setup, verify `X-Hub-Signature-256` in route, then enqueue build jobs via utopia-php/queue. Persist `installationId` per project in Appwrite DB

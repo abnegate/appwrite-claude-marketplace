@@ -69,7 +69,7 @@ read this index, pick the most relevant skills, and return a synthesised answer.
 | Skill | Description |
 |---|---|
 | `utopia-analytics-expert` | Expert reference for utopia-php/analytics — product-analytics client for GA/Plausible/Mixpanel/HubSpot/Orbit/ReoDev. Consult when fixing coroutine-unsafe state, adding batching, or dual-writing events to audit for compliance. |
-| `utopia-audit-expert` | Expert reference for utopia-php/audit — user action/audit log store with Database and ClickHouse adapters. Consult when wiring retention, moving audit off MySQL, or adding trace correlation to audit rows. |
+| `utopia-audit-expert` | Expert reference for utopia-php/audit — actor action/audit log store with Database and ClickHouse adapters. Consult when wiring retention, moving audit off MySQL, adding trace correlation, or migrating off the legacy userId column to the actor terminology. |
 | `utopia-logger-expert` | Expert reference for utopia-php/logger — structured error/warning reporting library with Sentry, AppSignal, Raygun, LogOwl adapters. Consult when wiring unified error tracking, adding trace correlation, or escaping synchronous push-per-error. |
 | `utopia-span-expert` | Expert reference for utopia-php/span — minimal Swoole-coroutine-safe span tracer with W3C traceparent propagation and per-exporter sampling. Consult when wiring distributed tracing, linking logs/audit/metrics by trace ID, or choosing between Stdout/Pretty/Sentry exporters. |
 | `utopia-telemetry-expert` | Expert reference for utopia-php/telemetry — OpenTelemetry metrics abstraction with Counter/UpDown/Histogram/Gauge/ObservableGauge and OTLP + Test + None adapters. Consult when emitting service metrics, wiring exemplars, or replacing Prometheus scraping. |
@@ -113,7 +113,7 @@ read this index, pick the most relevant skills, and return a synthesised answer.
 | `utopia-balancer-expert` | Expert reference for utopia-php/balancer — framework-agnostic client-side load balancer with Random/First/Last/RoundRobin algorithms, chained filters, and OTel-instrumented Group failover. Consult when picking executor nodes or wiring storage-adapter failover. |
 | `utopia-cloudevents-expert` | Expert reference for utopia-php/cloudevents — minimal PHP 8.3 CloudEvents v1.0.2 implementation. Consult when standardizing event envelopes between Appwrite services, Functions, webhooks, and Knative/Dapr consumers. |
 | `utopia-console-expert` | Expert reference for utopia-php/console — static helper for CLI output (colored log levels), prompts, subprocess execution with timeout, and a long-running daemon loop with automatic GC. Consult when building Appwrite bin workers or replacing ad-hoc echo/var_dump. |
-| `utopia-usage-expert` | Expert reference for utopia-php/usage — currently a STUB repository with no src. The active rebuild lives on claude/rebuild-analytics-clickhouse-OHWGZ. Consult before depending on this library in production. |
+| `utopia-usage-expert` | Expert reference for utopia-php/usage — two-table (events + gauges) metering library with ClickHouse and Database adapters, in-memory buffering, query-time aggregation, and a daily SummingMergeTree materialised view. Consult when wiring per-project usage capture, sizing flush thresholds, querying daily/hourly time series, or composing with utopia-php/query. |
 
 ## Composition notes for the router
 

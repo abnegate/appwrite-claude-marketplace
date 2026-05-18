@@ -9,7 +9,7 @@ description: Expert reference for utopia-php/circuit-breaker — three-state bre
 Three-state circuit breaker (`CLOSED`/`OPEN`/`HALF_OPEN`) for short-circuiting calls to flaky downstream dependencies. State lives in-process by default but can be shared across workers via Redis or `Swoole\Table` adapters. Telemetry is opt-in via `utopia-php/telemetry`.
 
 ## Public API
-- `Utopia\CircuitBreaker\CircuitBreaker(threshold=3, timeout=30, successThreshold=2, ?Adapter $cache, cacheKey='default', ?Telemetry, metricPrefix='')` — `call(callable $open, callable $close, ?callable $halfOpen)`, `setTelemetry(Telemetry)`, `trip()` (force OPEN), `getState()`, `getFailureCount()`, `getSuccessCount()`, `isOpen()/isClosed()/isHalfOpen()`
+- `Utopia\CircuitBreaker\CircuitBreaker(threshold=3, timeout=30, successThreshold=2, ?Adapter $cache, key='default', ?Telemetry, metricPrefix='')` — `call(callable $open, callable $close, ?callable $halfOpen)`, `setTelemetry(Telemetry)`, `trip()` (force OPEN), `getState()`, `getFailureCount()`, `getSuccessCount()`, `isOpen()/isClosed()/isHalfOpen()`. The constructor arg is now `key` (was `cacheKey` in 0.2.x) — passing the old name as a positional arg still works, but named-arg call sites must be renamed
 - `Utopia\CircuitBreaker\CircuitState` — enum: `CLOSED|OPEN|HALF_OPEN`
 - `Utopia\CircuitBreaker\Adapter` — interface: `get(key)`, `set(key, value)`, `increment(key, by=1)`, `delete(key)`
 - `Utopia\CircuitBreaker\Adapter\Redis(object $redis, prefix='breaker:')` — duck-typed; wraps any client exposing `get/set/incrBy/del`
@@ -25,19 +25,19 @@ Three-state circuit breaker (`CLOSED`/`OPEN`/`HALF_OPEN`) for short-circuiting c
 - **`metricPrefix`** namespaces all metrics — `metricPrefix: 'edge'` produces `edge.breaker.calls`, etc. Set per host service so dashboards can split
 
 ## Gotchas
-- **In-memory only by default** — without an `Adapter`, two PHP-FPM workers see independent breakers. Production multi-worker setups must pass `Adapter\Redis` or `Adapter\SwooleTable` plus a stable `cacheKey`
-- **`cacheKey` must be unique per protected dependency** — sharing one key across calls means a failure in service A trips the breaker for service B. Use `users-api`, `email-provider`, etc.
-- **Redis adapter is duck-typed**, not strictly typed — it accepts any object with `get/set/incrBy/del`. `phpredis` and `Predis` both work; cluster clients also work but be careful that `incrBy` hashtags `cacheKey` to one slot
+- **In-memory only by default** — without an `Adapter`, two PHP-FPM workers see independent breakers. Production multi-worker setups must pass `Adapter\Redis` or `Adapter\SwooleTable` plus a stable `key`
+- **`key` must be unique per protected dependency** — sharing one key across calls means a failure in service A trips the breaker for service B. Use `users-api`, `email-provider`, etc. The constructor throws `InvalidArgumentException` if a cache adapter is wired with an empty `key`
+- **Redis adapter is duck-typed**, not strictly typed — it accepts any object with `get/set/incrBy/del`. `phpredis` and `Predis` both work; cluster clients also work but be careful that `incrBy` hashtags `key` to one slot
 - **`SwooleTable::createTable()` requires `ext-swoole`** at create-time; running it under FPM throws. The adapter itself is duck-typed too — you can swap a fake table in tests
 - **Half-open probes can stampede** — without rate limiting, every worker hitting HALF_OPEN at once will flood the recovering service. Prefer `successThreshold: 1` with low traffic, higher with high
 - **No tripping by latency** — only thrown exceptions count as failures. A 30-second timeout is "success" unless your `$close` throws on slow responses
 - **`trip()` forces OPEN out-of-band** — idempotent (re-tripping refreshes `openedAt` and re-emits gauges, no extra `transitions` recorded). Use it from a circuit-management endpoint or admin task to take a flapping dependency offline manually; the breaker still self-heals after `timeout` via the normal HALF_OPEN probe
 
 ## Appwrite leverage opportunities
-- **Wrap every external integration** in Functions/Messaging/OAuth providers with one breaker per provider — currently a single misbehaving SMTP provider can saturate the messaging worker pool. `cacheKey: "email-{provider}"` plus `Adapter\Redis` shares trip state across workers
+- **Wrap every external integration** in Functions/Messaging/OAuth providers with one breaker per provider — currently a single misbehaving SMTP provider can saturate the messaging worker pool. `key: "email-{provider}"` plus `Adapter\Redis` shares trip state across workers
 - **Dashboard the `breaker.transitions` counter** — if a breaker is flapping (>5 transitions/min), it's threshold-mistuned. Pair with the existing OpenTelemetry exporter and add an alert
 - **`Adapter\SwooleTable` for the orchestrator runtime** — orchestrator is single-host Swoole; shared-memory breakers have zero network cost vs Redis. One `SwooleTable::createTable(size: 64)` covers all downstream containers
-- **Add a `breaker:list` CLI command** to print state of every cacheKey for ops triage — currently you have to redis-cli and parse the prefix manually
+- **Add a `breaker:list` CLI command** to print state of every key for ops triage — currently you have to redis-cli and parse the prefix manually
 
 ## Example
 ```php
@@ -53,7 +53,7 @@ $breaker = new CircuitBreaker(
     timeout: 60,
     successThreshold: 2,
     cache: new BreakerRedis($redis),
-    cacheKey: "smtp-{$providerId}",
+    key: "smtp-{$providerId}",
     telemetry: new OpenTelemetry('http://otel:4318/v1/metrics', 'messaging', 'workers', \gethostname() ?: 'local'),
     metricPrefix: 'messaging',
 );

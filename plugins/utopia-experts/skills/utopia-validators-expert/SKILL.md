@@ -10,7 +10,7 @@ Dependency-free input validation primitives with a uniform `isValid/getDescripti
 
 ## Public API (categories)
 - **Primitives**: `Boolean`, `Integer`, `FloatValidator`, `Numeric`, `Text`, `Range`
-- **Strings/format**: `HexColor`, `JSON`, `URL`
+- **Strings/format**: `HexColor`, `JSON`, `URL`, `Contains(array $patterns, bool $strict = false)` — passes when the value contains at least one of `$patterns` as a substring; default is case-insensitive (`mb_strtolower` both sides), `strict: true` for case-sensitive match. Empty `$patterns` throws `InvalidArgumentException`. Used by `appwrite/appwrite` to detect `[skip ci]` markers in commit messages and skip a deployment
 - **Network**: `Domain`, `Host`, `Hostname`, `IP`
 - **Collections**: `ArrayList`, `Assoc`, `WhiteList`, `Wildcard`
 - **Composition**: `AllOf`, `AnyOf`, `NoneOf`, `Multiple`, `Nullable`

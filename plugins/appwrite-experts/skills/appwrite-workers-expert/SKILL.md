@@ -86,6 +86,15 @@ Specialized event classes extend `Event`:
 - `Appwrite\Event\Certificate` — certificate events
 - `Appwrite\Event\Mail` — system email events
 
+### Typed publisher/message migration (in flight, 1.9.x)
+
+A second producer surface lives next to the legacy `queueFor*` Event objects:
+
+- `Appwrite\Event\Publisher\{Func, Database, Delete, Audit, Build, Certificate, Execution, Mail, Messaging, Migration, Screenshot, StatsResources, Usage}` — each `readonly class extends Base`, ctor `(Publisher $publisher, Queue $queue)`, exposes `enqueue(BaseMessage $message, ?Queue $queue = null): string|bool` and `getSize(bool $failed = false, ?Queue $queue = null): int`. `Publisher\Base::publish()` calls `$message->toArray()` and forwards to `Utopia\Queue\Publisher::enqueue()`
+- `Appwrite\Event\Message\{Func, Database, Delete, …}` — `final readonly` value objects with promoted constructor properties; each implements `toArray()` so payload shape is no longer reflected ad-hoc through `$event->setParam(...)`. `Func::fromEvent($event, $params, $project, $user, $userId, $payload, $platform)` is the convenience constructor used by event-driven dispatch
+
+The migration is happening per-queue (function publisher landed via `Migrate queueForFunctions to FunctionPublisher and FunctionMessage`; database and deletes followed; region manager queue moved on the cloud side). When adding a new producer, prefer the typed pair over wiring another `Event` subclass — the legacy `queueFor*` injectables and shutdown-hook `trigger()` still exist for compatibility and will be migrated piecewise.
+
 ## Queue system
 
 Backend: `utopia-php/queue` with broker adapters (Redis, AMQP, Pool).
