@@ -10,7 +10,7 @@ Consistent `Device` abstraction over local filesystem and S3-compatible object s
 
 ## Public API
 - `Utopia\Storage\Storage` — static registry (`setDevice`/`getDevice`) plus `human()` byte formatter
-- `Utopia\Storage\Device` (abstract) — contract for upload/read/write/transfer/delete/exists/getFileHash/getFileMimeType/createDirectory/deletePath/listFiles
+- `Utopia\Storage\Device` (abstract) — contract for `upload`/`prepareUpload`/`uploadChunk`/`finalizeUpload`/`abort`/`uploadData`/`read`/`write`/`transfer`/`delete`/`exists`/`getFileHash`/`getFileMimeType`/`createDirectory`/`deletePath`/`listFiles`. The chunked upload contract is now split into three explicit phases (PR #165): `prepareUpload(path, contentType, chunks, &$metadata)` reserves resources (multipart init on S3, temp directory on Local), `uploadChunk(source, path, chunk, chunks, &$metadata)` writes a single part and returns the count of staged chunks (does **not** finalise even when it's the last part), and `finalizeUpload(path, chunks, &$metadata)` assembles + commits. The legacy `upload()` is now a wrapper that calls all three for backwards compatibility, but consumers driving parallel resumable uploads (Appwrite Console drag-drop, function deploys) should call the phases directly
 - `Device\Local` — filesystem adapter with deterministic nested path sharding via `getPath()`
 - `Device\S3` — canonical SigV4 S3 client with multipart state in `$metadata`
 - `Device\AWS`, `Device\DOSpaces`, `Device\Backblaze`, `Device\Linode`, `Device\Wasabi` — subclass S3 with preset FQDNs, region/ACL constants
@@ -18,8 +18,8 @@ Consistent `Device` abstraction over local filesystem and S3-compatible object s
 - `Storage\Validator\{File,FileExt,FileName,FileSize,FileType,Upload}` — request-side validators
 
 ## Core patterns
-- **Chunked upload protocol**: `upload($source, $path, $chunk, $chunks, $metadata)` with caller-owned `$metadata` by-ref that persists S3 multipart upload IDs and parts between chunks. **Chunks may now arrive out-of-order on the `Local` adapter** — the assembly code counts staged chunks rather than asserting `chunk == $chunks` on the final call, so concurrent resumable uploads no longer deadlock on a missing tail
-- **Idempotent `joinChunks` finalization** — both `Local` and `S3` short-circuit if the destination object already exists, so two workers racing to finalize the same upload (e.g. retried last chunk) do not corrupt the assembled file. `Local` writes assembled output to a `tempnam`-suffixed file and gracefully unwinds if `rename()` loses the race
+- **Chunked upload protocol — three explicit phases**: `prepareUpload` → repeat `uploadChunk` → `finalizeUpload`, with caller-owned `$metadata` by-ref persisting S3 multipart upload IDs and parts between chunks. `uploadChunk` returns the count of staged chunks and **does not finalise even on the last part** — call sites that want one-shot semantics use the legacy `upload()` wrapper. **Chunks may arrive out-of-order on the `Local` adapter** — finalisation counts staged chunks rather than asserting `chunk == $chunks` on the final call, so concurrent resumable uploads no longer deadlock on a missing tail
+- **Idempotent `finalizeUpload`** — both `Local` and `S3` short-circuit if the destination object already exists, so two workers racing to finalize the same upload (e.g. retried last chunk) do not corrupt the assembled file. `Local` writes assembled output to a `tempnam`-suffixed file and gracefully unwinds if `rename()` loses the race
 - **`transfer($path, $dest, $targetDevice)`** copies across any two devices using `$transferChunkSize` (default 20MB) — reuse for bucket-to-bucket moves without downloading to disk
 - All writes use `getPath()` to produce a sharded tree (e.g. `ab/cd/ef/abcdef…`) so a flat bucket doesn't become unlistable
 - Telemetry injected via constructor; every op is timed into a single `storage.operation` histogram tagged by method
@@ -51,9 +51,14 @@ $cold = Storage::getDevice('cold');
 
 $metadata = [];
 $chunks   = (int) ceil($hot->getFileSize($src = '/tmp/video.mp4') / (5 * 1024 * 1024));
+
+// Phased API: prepare once, drive chunks (possibly in parallel), finalise once.
+$cold->prepareUpload('videos/x.mp4', 'video/mp4', $chunks, $metadata);
 for ($i = 1; $i <= $chunks; $i++) {
-    $cold->upload($src, 'videos/x.mp4', $i, $chunks, $metadata);
+    $cold->uploadChunk($src, 'videos/x.mp4', $i, $chunks, $metadata);
 }
+$cold->finalizeUpload('videos/x.mp4', $chunks, $metadata);
+
 if ($hot->getFileHash($src) !== $cold->getFileHash('videos/x.mp4')) {
     $cold->abort('videos/x.mp4', $metadata['uploadId'] ?? '');
 }

@@ -23,7 +23,7 @@ Redis/AMQP-backed job queue with a Swoole/Workerman worker server, DI-driven job
 - **Dual-role brokers** — `Redis` and `AMQP` both implement `Publisher` + `Consumer`, so the same class enqueues and dequeues
 - **`Broker\Pool`** wraps multiple brokers for connection pooling via `utopia-php/pools`
 - **Redis broker uses namespaced keys**: `{ns}.queue.{name}`, `{ns}.jobs.{name}.{pid}`, `{ns}.processing.{name}`, `{ns}.stats.{name}.*` with a `jobTtl` lease
-- **Telemetry baked in**: `messaging.process.wait.duration` + `process.duration` histograms via `utopia-php/telemetry`
+- **Telemetry baked in**: `messaging.process.wait.duration` + `messaging.process.duration` histograms plus the `messaging.queue.depth` gauge (PR #79) — sampled per job by calling `Publisher::getQueueSize($queue)` so the metric tracks pending pressure even when consumers are saturated. Tagged with `messaging.destination.name` / `messaging.destination.namespace`. Failures to read the size are swallowed so a flaky Redis doesn't crash the worker
 - **Bounded reconnects survive transient Redis outages** — `Broker\Redis::consume()` catches connection errors, sleeps a randomized backoff that doubles each attempt up to `RECONNECT_MAX_BACKOFF_MS`, and resumes the consume loop without crashing the worker. Wire `setReconnectCallback(fn($queue, $err, $attempt, $sleepMs) => …)` for retry telemetry and `setReconnectSuccessCallback(fn($queue, $attempts) => …)` to track recovery — counters from these are how you tell a healthy reconnect storm from a flapping cluster
 
 ## Gotchas
